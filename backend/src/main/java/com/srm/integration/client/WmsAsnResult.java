@@ -1,5 +1,6 @@
 package com.srm.integration.client;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -8,6 +9,7 @@ import java.util.List;
 
 /** WMS ASN 查询/创建返回 */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class WmsAsnResult {
     private Long id;
     private String code;
@@ -16,6 +18,7 @@ public class WmsAsnResult {
     private List<Line> lines;
 
     @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Line {
         private Long id;
         private String itemCode;
