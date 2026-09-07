@@ -151,10 +151,12 @@ public class ReceiptService {
         asn.setRejectedQty(asnLines.stream().map(l -> nz(l.getRejectedQty())).reduce(BigDecimal.ZERO, BigDecimal::add));
         asn.setReceivedAt(payload.getReceivedAt() != null ? payload.getReceivedAt() : LocalDateTime.now());
         boolean allReceived = asnLines.stream().allMatch(l -> nz(l.getReceivedQty()).signum() > 0);
-        asn.setStatus(complete || allReceived ? "RECEIVED" : "RECEIVING");
+        // 仅回调/手工(delta)且所有行都有收货时视作完成；轮询只信 WMS 的完成状态，避免部分收货时提前建 GR
+        boolean done = complete || (delta && allReceived);
+        asn.setStatus(done ? "RECEIVED" : "RECEIVING");
         asnMapper.updateById(asn);
 
-        if (!complete && !allReceived) {
+        if (!done) {
             return null; // 部分收货：只同步数量
         }
 

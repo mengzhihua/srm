@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.srm.common.R;
 import com.srm.purchase.entity.PoLine;
 import com.srm.purchase.entity.PurchaseOrder;
+import com.srm.sourcing.entity.Rfq;
 import com.srm.sourcing.entity.PurchaseRequisition;
 import com.srm.sourcing.service.PrService;
 import lombok.Data;
@@ -60,6 +61,11 @@ public class PrController {
     public static class ToPoReq {
         private String supplierCode;
         private List<PoLine> lines;
+    }
+
+    @PostMapping("/{id}/to-rfq")
+    public R<Rfq> toRfq(@PathVariable Long id, @RequestBody Rfq rfq) {
+        return R.ok(service.toRfq(id, rfq));
     }
 
     @PostMapping("/{id}/to-po")

@@ -10,6 +10,8 @@ import com.srm.purchase.entity.PurchaseOrder;
 import com.srm.purchase.service.PurchaseOrderService;
 import com.srm.sourcing.entity.PrLine;
 import com.srm.sourcing.entity.PurchaseRequisition;
+import com.srm.sourcing.entity.Rfq;
+import com.srm.sourcing.entity.RfqLine;
 import com.srm.sourcing.mapper.PrLineMapper;
 import com.srm.sourcing.mapper.PurchaseRequisitionMapper;
 import com.srm.system.auth.CurrentUser;
@@ -28,6 +30,7 @@ public class PrService {
     private final PurchaseRequisitionMapper prMapper;
     private final PrLineMapper lineMapper;
     private final PurchaseOrderService poService;
+    private final RfqService rfqService;
     private final CodeGenerator codeGenerator;
 
     public PurchaseRequisition load(Long id) {
@@ -111,6 +114,28 @@ public class PrService {
         pr.setStatus("CANCELLED");
         prMapper.updateById(pr);
         return load(id);
+    }
+
+    /** PR 转询价：以申请行生成 RFQ */
+    @Transactional
+    public Rfq toRfq(Long id, Rfq rfq) {
+        CurrentUser.requireBuyerSide();
+        PurchaseRequisition pr = load(id);
+        if (!"APPROVED".equals(pr.getStatus())) {
+            throw new BizException("仅已审批的采购申请可转询价，当前: " + pr.getStatus());
+        }
+        rfq.setPlantCode(pr.getPlantCode());
+        rfq.setLines(pr.getLines().stream().map(l -> {
+            RfqLine rl = new RfqLine();
+            rl.setMaterialCode(l.getMaterialCode());
+            rl.setQty(l.getQty());
+            rl.setRequiredDate(l.getRequiredDate());
+            return rl;
+        }).collect(java.util.stream.Collectors.toList()));
+        Rfq saved = rfqService.create(rfq);
+        pr.setStatus("ORDERED");
+        prMapper.updateById(pr);
+        return saved;
     }
 
     /** PR 转采购订单：supplierCode 必填，价格可由调用方传入 */
