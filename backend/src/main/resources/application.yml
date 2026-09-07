@@ -1,0 +1,100 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: srm-backend
+  datasource:
+    # 默认使用内嵌 H2 文件库，零配置启动；生产使用 --spring.profiles.active=mysql
+    url: jdbc:h2:file:./data/srm;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+      continue-on-error: true
+  h2:
+    console:
+      # 仅开发排障时开启: SRM_H2_CONSOLE=true
+      enabled: ${SRM_H2_CONSOLE:false}
+      path: /h2
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+
+logging:
+  level:
+    com.srm: info
+
+srm:
+  auth:
+    # 令牌签名密钥；生产必须设置，否则每次重启随机生成导致全员重新登录
+    secret: ${SRM_AUTH_SECRET:}
+    token-ttl: ${SRM_TOKEN_TTL:12h}
+    # 首次启动创建 admin 时使用的初始密码
+    admin-password: ${SRM_ADMIN_PASSWORD:admin123}
+  cors:
+    # 允许跨域的前端来源，逗号分隔；前后端同源部署时可设为空
+    origins: ${SRM_CORS_ORIGINS:http://localhost:5174}
+  sap:
+    # mock=本地模拟（生成 SAP 单号）；http=调 S/4HANA OData 接口
+    mode: ${SRM_SAP_MODE:mock}
+    base-url: ${SRM_SAP_BASE_URL:}
+    username: ${SRM_SAP_USERNAME:}
+    password: ${SRM_SAP_PASSWORD:}
+    # mock 模式下的随机失败率（0~1），用于演示失败重试
+    mock-fail-rate: ${SRM_SAP_MOCK_FAIL_RATE:0}
+  wms:
+    # mock=本地模拟；http=调本机/远端 WMS REST 接口
+    mode: ${SRM_WMS_MODE:mock}
+    base-url: ${SRM_WMS_BASE_URL:http://localhost:8080}
+    username: ${SRM_WMS_USERNAME:admin}
+    password: ${SRM_WMS_PASSWORD:admin123}
+    # http 模式下轮询在途 ASN 收货状态的间隔
+    poll-interval: ${SRM_WMS_POLL_INTERVAL:30000}
+  integration:
+    # WMS 回调/推送接口的 X-Api-Key
+    api-key: ${SRM_INTEGRATION_API_KEY:srm-wms-key}
+  purchase:
+    # 允许的超交比例（%），0 表示不允许超交
+    over-delivery-tolerance: ${SRM_OVER_DELIVERY_TOLERANCE:0}
+  delivery:
+    # ASN 创建后是否自动同步 WMS（失败不影响创建，状态置 SYNC_FAILED）
+    auto-sync: ${SRM_DELIVERY_AUTO_SYNC:true}
+  evaluation:
+    # WMS 推送考核分在综合得分中的权重
+    wms-weight: ${SRM_EVAL_WMS_WEIGHT:0.3}
+  invoice:
+    # 发票行单价与采购单价的容差（绝对值）
+    price-tolerance: ${SRM_INVOICE_PRICE_TOLERANCE:0.01}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: mysql
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:srm}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  sql:
+    init:
+      mode: always
+      continue-on-error: false
+  h2:
+    console:
+      enabled: false
