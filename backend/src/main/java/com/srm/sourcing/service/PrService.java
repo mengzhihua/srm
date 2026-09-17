@@ -66,6 +66,25 @@ public class PrService {
         return load(pr.getId());
     }
 
+    /** IR 控制塔补货建议：按 SKU 生成采购申请草稿。 */
+    @Transactional
+    public PurchaseRequisition suggestFromControlTower(String sku, BigDecimal qty, String plantCode, String remark) {
+        if (sku == null || sku.trim().isEmpty() || qty == null || qty.signum() <= 0) {
+            throw new BizException("SKU 与数量必填");
+        }
+        PurchaseRequisition pr = new PurchaseRequisition();
+        pr.setPlantCode(plantCode == null || plantCode.trim().isEmpty() ? "P001" : plantCode.trim());
+        pr.setRequester("IR");
+        pr.setDepartment("CONTROL_TOWER");
+        pr.setRemark(remark == null || remark.trim().isEmpty()
+                ? "IR 控制塔采购建议 " + sku.trim() : remark.trim());
+        PrLine line = new PrLine();
+        line.setMaterialCode(sku.trim());
+        line.setQty(qty);
+        pr.setLines(java.util.Collections.singletonList(line));
+        return create(pr);
+    }
+
     private void saveLines(PurchaseRequisition pr) {
         int i = 1;
         for (PrLine l : pr.getLines()) {
