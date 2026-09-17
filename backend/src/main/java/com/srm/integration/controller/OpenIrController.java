@@ -1,12 +1,21 @@
 package com.srm.integration.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.srm.common.BizException;
 import com.srm.common.R;
+import com.srm.delivery.entity.Asn;
+import com.srm.delivery.mapper.AsnMapper;
+import com.srm.purchase.entity.PurchaseOrder;
+import com.srm.purchase.mapper.PurchaseOrderMapper;
+import com.srm.sourcing.entity.PrLine;
 import com.srm.sourcing.entity.PurchaseRequisition;
+import com.srm.sourcing.mapper.PrLineMapper;
+import com.srm.sourcing.mapper.PurchaseRequisitionMapper;
 import com.srm.sourcing.service.PrService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -14,14 +23,21 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
-/** IR 控制塔采购建议入口（X-Api-Key）。 */
+/** IR 控制塔：采购申请 / 订单 / ASN 快照，以及采购建议与审批指令。 */
 @RestController
 @RequestMapping("/api/open/ir")
 @RequiredArgsConstructor
 public class OpenIrController {
     private final PrService prService;
+    private final PurchaseRequisitionMapper prMapper;
+    private final PrLineMapper prLineMapper;
+    private final PurchaseOrderMapper poMapper;
+    private final AsnMapper asnMapper;
 
     @Value("${srm.integration.api-key:srm-wms-key}")
     private String apiKey;
@@ -37,6 +53,34 @@ public class OpenIrController {
         private Map<String, Object> params;
     }
 
+    @GetMapping("/snapshots")
+    public R<Map<String, Object>> snapshots(
+            @RequestHeader(value = "X-Api-Key", required = false) String key) {
+        checkKey(key);
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (PurchaseRequisition pr : prMapper.selectList(null)) {
+            PrLine line = firstLine(pr.getId());
+            rows.add(row("PR", pr.getCode(), pr.getStatus(),
+                    line == null ? null : line.getMaterialCode(),
+                    line == null ? BigDecimal.ZERO : line.getQty(),
+                    null, pr.getPlantCode(), "采购申请 " + pr.getCode()));
+        }
+        for (PurchaseOrder po : poMapper.selectList(null)) {
+            rows.add(row("PO", po.getCode(), po.getStatus(), null,
+                    BigDecimal.ONE, po.getTotalAmount(), po.getPlantCode(),
+                    "采购订单 " + po.getCode()));
+        }
+        for (Asn asn : asnMapper.selectList(null)) {
+            rows.add(row("ASN", asn.getCode(), asn.getStatus(), null,
+                    asn.getTotalQty(), null, asn.getPlantCode(),
+                    "发货通知 " + asn.getCode()));
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("system", "SRM");
+        data.put("snapshots", rows);
+        return R.ok(data);
+    }
+
     @PostMapping("/purchase-suggest")
     public R<PurchaseRequisition> suggest(
             @RequestHeader(value = "X-Api-Key", required = false) String key,
@@ -47,15 +91,39 @@ public class OpenIrController {
     }
 
     @PostMapping("/actions")
-    public R<PurchaseRequisition> actions(
+    public R<Object> actions(
             @RequestHeader(value = "X-Api-Key", required = false) String key,
             @RequestBody SuggestReq req) {
         checkKey(key);
-        if (req.getType() != null && !"SRM_PURCHASE_SUGGEST".equals(req.getType())) {
-            throw new BizException("不支持的 IR 指令: " + req.getType());
+        String type = req.getType() == null ? "SRM_PURCHASE_SUGGEST" : req.getType();
+        if ("SRM_PURCHASE_SUGGEST".equals(type)) {
+            return R.ok(prService.suggestFromControlTower(
+                    sku(req), qty(req), plant(req), remark(req)));
         }
-        return R.ok(prService.suggestFromControlTower(
-                sku(req), qty(req), plant(req), remark(req)));
+        if ("SRM_SUBMIT_PR".equals(type)) {
+            return R.ok(prService.submit(prId(req)));
+        }
+        if ("SRM_APPROVE_PR".equals(type)) {
+            return R.ok(prService.approve(prId(req)));
+        }
+        throw new BizException("不支持的 IR 指令: " + type);
+    }
+
+    private Long prId(SuggestReq req) {
+        String code = first(req.getTargetKey(),
+                req.getParams() == null ? null : string(req.getParams().get("code")));
+        PurchaseRequisition pr = prMapper.selectOne(new LambdaQueryWrapper<PurchaseRequisition>()
+                .eq(PurchaseRequisition::getCode, code));
+        if (pr == null) {
+            throw new BizException("采购申请不存在: " + code);
+        }
+        return pr.getId();
+    }
+
+    private PrLine firstLine(Long prId) {
+        List<PrLine> lines = prLineMapper.selectList(new LambdaQueryWrapper<PrLine>()
+                .eq(PrLine::getPrId, prId).orderByAsc(PrLine::getLineNo));
+        return lines.isEmpty() ? null : lines.get(0);
     }
 
     private void checkKey(String key) {
@@ -103,6 +171,34 @@ public class OpenIrController {
             return req.getRemark();
         }
         return "IR 控制塔采购建议";
+    }
+
+    private static Map<String, Object> row(
+            String dataType, String bizKey, String status, String sku,
+            BigDecimal qty, BigDecimal amount, String plantCode, String title) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("dataType", dataType);
+        row.put("bizKey", bizKey);
+        row.put("status", status);
+        row.put("sku", sku);
+        row.put("qty", qty);
+        row.put("amount", amount);
+        row.put("plantCode", plantCode);
+        row.put("title", title);
+        return row;
+    }
+
+    private static String first(String... values) {
+        for (String value : values) {
+            if (!blank(value)) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
+
+    private static String string(Object value) {
+        return value == null ? null : String.valueOf(value);
     }
 
     private static boolean blank(String value) {
