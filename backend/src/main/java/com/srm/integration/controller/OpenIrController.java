@@ -1,6 +1,8 @@
 package com.srm.integration.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.srm.basic.entity.Plant;
+import com.srm.basic.mapper.PlantMapper;
 import com.srm.common.BizException;
 import com.srm.common.R;
 import com.srm.delivery.entity.Asn;
@@ -38,6 +40,7 @@ public class OpenIrController {
     private final PrLineMapper prLineMapper;
     private final PurchaseOrderMapper poMapper;
     private final AsnMapper asnMapper;
+    private final PlantMapper plantMapper;
 
     @Value("${srm.integration.api-key:srm-wms-key}")
     private String apiKey;
@@ -157,11 +160,29 @@ public class OpenIrController {
     }
 
     private String plant(SuggestReq req) {
-        if (!blank(req.getPlantCode())) {
-            return req.getPlantCode();
+        String value = req.getPlantCode();
+        if (blank(value) && req.getParams() != null && req.getParams().get("plantCode") != null) {
+            value = String.valueOf(req.getParams().get("plantCode"));
         }
-        if (req.getParams() != null && req.getParams().get("plantCode") != null) {
-            return String.valueOf(req.getParams().get("plantCode"));
+        if (blank(value) && req.getParams() != null && req.getParams().get("werks") != null) {
+            value = String.valueOf(req.getParams().get("werks"));
+        }
+        return resolvePlant(value);
+    }
+
+    private String resolvePlant(String value) {
+        if (blank(value)) {
+            return "P001";
+        }
+        Plant byCode = plantMapper.selectOne(new LambdaQueryWrapper<Plant>()
+                .eq(Plant::getCode, value));
+        if (byCode != null) {
+            return byCode.getCode();
+        }
+        Plant bySap = plantMapper.selectOne(new LambdaQueryWrapper<Plant>()
+                .eq(Plant::getSapPlantCode, value));
+        if (bySap != null) {
+            return bySap.getCode();
         }
         return "P001";
     }
