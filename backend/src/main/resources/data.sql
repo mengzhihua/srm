@@ -8,6 +8,9 @@ WHERE NOT EXISTS (SELECT 1 FROM srm_supplier WHERE code='SUP02');
 INSERT INTO srm_supplier (code, name, short_name, contact, phone, email, address, category, payment_terms, currency, sap_vendor_code, wms_supplier_code, status, created_at, updated_at)
 SELECT 'SUP03', '苏州包装制品', '苏州包装', '陈杰', '13700000003', 'sales@sup03.example', '苏州市工业园区', '包材', '货到付款', 'CNY', '100030', 'SUP03', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 WHERE NOT EXISTS (SELECT 1 FROM srm_supplier WHERE code='SUP03');
+UPDATE srm_supplier SET score = 96, grade = 'A' WHERE code = 'SUP01' AND (score IS NULL OR score = 0);
+UPDATE srm_supplier SET score = 88, grade = 'B' WHERE code = 'SUP02' AND (score IS NULL OR score = 0);
+UPDATE srm_supplier SET score = 72, grade = 'C' WHERE code = 'SUP03' AND (score IS NULL OR score = 0);
 
 INSERT INTO srm_material (code, name, spec, unit, category, sap_material_code, wms_item_code, tax_rate, status, created_at, updated_at)
 SELECT 'SKU001', '无线鼠标 M1', '黑色', 'EA', '电脑配件', 'M1001', 'SKU001', 0.13, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP

@@ -58,6 +58,15 @@ public class OpenIrControllerTest {
         assertEquals("SKU001", po.path("sku").asText());
         assertNotNull(pr);
         assertEquals("DRAFT", pr.path("status").asText());
+        JsonNode risk = null;
+        for (JsonNode row : rows) {
+            if ("SUPPLIER".equals(row.path("dataType").asText())
+                    && "SUP03".equals(row.path("bizKey").asText())) {
+                risk = row;
+            }
+        }
+        assertNotNull(risk, "应包含低分供应商");
+        assertEquals("RISK", risk.path("status").asText());
 
         mockMvc.perform(post("/api/open/ir/actions")
                         .header("X-Api-Key", "test-open-key")

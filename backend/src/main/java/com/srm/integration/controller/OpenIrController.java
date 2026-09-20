@@ -12,6 +12,8 @@ import com.srm.purchase.entity.PurchaseOrder;
 import com.srm.purchase.mapper.PoLineMapper;
 import com.srm.purchase.mapper.PurchaseOrderMapper;
 import com.srm.purchase.service.PurchaseOrderService;
+import com.srm.basic.entity.Supplier;
+import com.srm.basic.mapper.SupplierMapper;
 import com.srm.sourcing.entity.PrLine;
 import com.srm.sourcing.entity.PurchaseRequisition;
 import com.srm.sourcing.mapper.PrLineMapper;
@@ -48,6 +50,7 @@ public class OpenIrController {
     private final PoLineMapper poLineMapper;
     private final AsnMapper asnMapper;
     private final AsnLineMapper asnLineMapper;
+    private final SupplierMapper supplierMapper;
 
     @Value("${srm.integration.api-key:srm-wms-key}")
     private String apiKey;
@@ -101,6 +104,16 @@ public class OpenIrController {
             row.put("expectedDate", asn.getExpectedDate());
             row.put("originalStatus", original);
             row.put("supplierCode", asn.getSupplierCode());
+            rows.add(row);
+        }
+        for (Supplier supplier : supplierMapper.selectList(null)) {
+            BigDecimal score = supplier.getScore() == null ? BigDecimal.ZERO : supplier.getScore();
+            String status = score.compareTo(new BigDecimal("85")) < 0 ? "RISK" : "OK";
+            Map<String, Object> row = row("SUPPLIER", supplier.getCode(), status,
+                    null, score, score, null, supplier.getName());
+            row.put("supplierCode", supplier.getCode());
+            row.put("grade", supplier.getGrade());
+            row.put("avgScore", score);
             rows.add(row);
         }
         Map<String, Object> data = new LinkedHashMap<>();
