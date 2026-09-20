@@ -240,7 +240,8 @@ cd srm-1.0.0
 
 - `srm-1.0.0-linux-x64.zip` → `bin/srm`
 - `srm-1.0.0-windows-x64.zip` → 双击 `srm.exe`
-- `srm-1.0.0-macos-x64.zip` → 双击 `srm.app`
+- `srm-1.0.0-macos-arm64.zip` → Apple Silicon（M 系列），双击 `srm.app`
+- `srm-1.0.0-macos-x64.zip` → Intel Mac，双击 `srm.app`
 
 浏览器访问 `http://127.0.0.1:8087`。默认账号 `admin / admin123`。
 
