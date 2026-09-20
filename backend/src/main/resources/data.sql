@@ -32,3 +32,31 @@ WHERE NOT EXISTS (SELECT 1 FROM srm_price_list WHERE supplier_code='SUP01' AND m
 INSERT INTO srm_price_list (supplier_code, material_code, price, currency, min_qty, valid_from, valid_to, contract_no, status, created_at, updated_at)
 SELECT 'SUP01', 'SKU003', 2.50, 'CNY', 100, '2025-01-01', '2026-12-31', 'CTR-2025-001', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 WHERE NOT EXISTS (SELECT 1 FROM srm_price_list WHERE supplier_code='SUP01' AND material_code='SKU003');
+
+-- IR 控制塔：待提交采购申请、可催单采购订单、已延误 ASN
+INSERT INTO srm_purchase_requisition (code, plant_code, requester, department, status, remark, created_at, updated_at)
+SELECT 'PR-IR-DRAFT', 'P001', 'IR', 'CONTROL_TOWER', 'DRAFT', 'IR 卡单采购申请', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM srm_purchase_requisition WHERE code='PR-IR-DRAFT');
+INSERT INTO srm_pr_line (pr_id, line_no, material_code, qty, required_date, ordered_qty, created_at, updated_at)
+SELECT id, 1, 'SKU001', 30, CURRENT_DATE + 7, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM srm_purchase_requisition WHERE code='PR-IR-DRAFT'
+AND NOT EXISTS (SELECT 1 FROM srm_pr_line WHERE pr_id = (SELECT id FROM srm_purchase_requisition WHERE code='PR-IR-DRAFT'));
+
+INSERT INTO srm_purchase_order (code, supplier_code, plant_code, currency, total_amount, status, expected_date, source_type, remark, created_at, updated_at)
+SELECT 'PO-IR-EXPEDITE', 'SUP01', 'P001', 'CNY', 4500.00, 'CONFIRMED', CURRENT_DATE - 2, 'MANUAL', 'IR 催单演示', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM srm_purchase_order WHERE code='PO-IR-EXPEDITE');
+INSERT INTO srm_po_line (po_id, line_no, material_code, qty, price, amount, delivery_date, shipped_qty, received_qty, rejected_qty, invoiced_qty, created_at, updated_at)
+SELECT id, 1, 'SKU001', 100, 45.00, 4500.00, CURRENT_DATE - 2, 0, 0, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM srm_purchase_order WHERE code='PO-IR-EXPEDITE'
+AND NOT EXISTS (SELECT 1 FROM srm_po_line WHERE po_id = (SELECT id FROM srm_purchase_order WHERE code='PO-IR-EXPEDITE'));
+
+INSERT INTO srm_asn (code, po_id, po_code, supplier_code, plant_code, status, expected_date, total_qty, received_qty, rejected_qty, remark, created_at, updated_at)
+SELECT 'ASN-IR-DELAY', id, 'PO-IR-EXPEDITE', 'SUP01', 'P001', 'CREATED', CURRENT_DATE - 1, 100, 0, 0, 'IR 延误 ASN', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM srm_purchase_order WHERE code='PO-IR-EXPEDITE'
+AND NOT EXISTS (SELECT 1 FROM srm_asn WHERE code='ASN-IR-DELAY');
+INSERT INTO srm_asn_line (asn_id, line_no, po_line_id, material_code, qty, received_qty, rejected_qty, created_at, updated_at)
+SELECT a.id, 1, l.id, 'SKU001', 100, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM srm_asn a
+JOIN srm_po_line l ON l.po_id = a.po_id AND l.line_no = 1
+WHERE a.code='ASN-IR-DELAY'
+AND NOT EXISTS (SELECT 1 FROM srm_asn_line WHERE asn_id = (SELECT id FROM srm_asn WHERE code='ASN-IR-DELAY'));
