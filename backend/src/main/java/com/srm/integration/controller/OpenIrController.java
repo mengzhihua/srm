@@ -36,6 +36,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** IR 控制塔：采购申请 / 订单 / ASN 快照，以及采购建议、审批与催单。 */
 @RestController
@@ -54,6 +55,7 @@ public class OpenIrController {
 
     @Value("${srm.integration.api-key:srm-wms-key}")
     private String apiKey;
+    private final ConcurrentHashMap<String, Object> actionCache = new ConcurrentHashMap<String, Object>();
 
     @Data
     public static class SuggestReq {
@@ -63,6 +65,7 @@ public class OpenIrController {
         private BigDecimal qty;
         private String plantCode;
         private String remark;
+        private String idempotencyKey;
         private Map<String, Object> params;
     }
 
@@ -137,20 +140,48 @@ public class OpenIrController {
             @RequestBody SuggestReq req) {
         checkKey(key);
         String type = req.getType() == null ? "SRM_PURCHASE_SUGGEST" : req.getType();
-        if ("SRM_PURCHASE_SUGGEST".equals(type)) {
-            return R.ok(prService.suggestFromControlTower(
-                    sku(req), qty(req), plant(req), remark(req)));
+        return R.ok(executeOnce(cacheKey(type, req.getTargetKey(), req.getIdempotencyKey()), () -> {
+            if ("SRM_PURCHASE_SUGGEST".equals(type)) {
+                return prService.suggestFromControlTower(
+                        sku(req), qty(req), plant(req), remark(req));
+            }
+            if ("SRM_SUBMIT_PR".equals(type)) {
+                return prService.submit(prId(req));
+            }
+            if ("SRM_APPROVE_PR".equals(type)) {
+                return prService.approve(prId(req));
+            }
+            if ("SRM_EXPEDITE_PO".equals(type)) {
+                return poService.expediteByCode(poCode(req), expediteRemark(req));
+            }
+            throw new BizException("不支持的 IR 指令: " + type);
+        }));
+    }
+
+    private Object executeOnce(String cacheKey, java.util.function.Supplier<Object> work) {
+        if (cacheKey == null) {
+            return work.get();
         }
-        if ("SRM_SUBMIT_PR".equals(type)) {
-            return R.ok(prService.submit(prId(req)));
+        Object cached = actionCache.get(cacheKey);
+        if (cached != null) {
+            return cached;
         }
-        if ("SRM_APPROVE_PR".equals(type)) {
-            return R.ok(prService.approve(prId(req)));
+        synchronized (actionCache) {
+            cached = actionCache.get(cacheKey);
+            if (cached != null) {
+                return cached;
+            }
+            Object created = work.get();
+            actionCache.put(cacheKey, created);
+            return created;
         }
-        if ("SRM_EXPEDITE_PO".equals(type)) {
-            return R.ok(poService.expediteByCode(poCode(req), expediteRemark(req)));
+    }
+
+    private static String cacheKey(String type, String targetKey, String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.trim().isEmpty() || "null".equals(idempotencyKey)) {
+            return null;
         }
-        throw new BizException("不支持的 IR 指令: " + type);
+        return type + "|" + (targetKey == null ? "" : targetKey) + "|" + idempotencyKey.trim();
     }
 
     private Long prId(SuggestReq req) {

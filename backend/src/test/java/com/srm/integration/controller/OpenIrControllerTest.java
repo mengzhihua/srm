@@ -79,7 +79,16 @@ public class OpenIrControllerTest {
         mockMvc.perform(post("/api/open/ir/actions")
                         .header("X-Api-Key", "test-open-key")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"type\":\"SRM_SUBMIT_PR\",\"targetKey\":\"PR-IR-DRAFT\"}"))
+                        .content("{\"type\":\"SRM_SUBMIT_PR\",\"targetKey\":\"PR-IR-DRAFT\","
+                                + "\"idempotencyKey\":\"SRM-SUBMIT-1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("SUBMITTED"));
+        mockMvc.perform(post("/api/open/ir/actions")
+                        .header("X-Api-Key", "test-open-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"SRM_SUBMIT_PR\",\"targetKey\":\"PR-IR-DRAFT\","
+                                + "\"idempotencyKey\":\"SRM-SUBMIT-1\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.status").value("SUBMITTED"));
