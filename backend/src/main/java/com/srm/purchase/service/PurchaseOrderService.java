@@ -222,6 +222,28 @@ public class PurchaseOrderService {
         }
     }
 
+    /** IR 催单：把未关闭订单的期望到货日提前到明天，并追加备注。 */
+    @Transactional
+    public PurchaseOrder expediteByCode(String code, String remark) {
+        if (code == null || code.trim().isEmpty()) {
+            throw new BizException("采购订单号必填");
+        }
+        PurchaseOrder po = poMapper.selectOne(new LambdaQueryWrapper<PurchaseOrder>()
+                .eq(PurchaseOrder::getCode, code.trim()));
+        if (po == null) {
+            throw new BizException("采购订单不存在: " + code);
+        }
+        if (Arrays.asList("CLOSED", "CANCELLED", "RECEIVED").contains(po.getStatus())) {
+            throw new BizException("当前状态不可催单: " + po.getStatus());
+        }
+        po.setExpectedDate(java.time.LocalDate.now().plusDays(1));
+        String note = remark == null || remark.trim().isEmpty() ? "IR 控制塔催单" : remark.trim();
+        String current = po.getRemark();
+        po.setRemark(current == null || current.trim().isEmpty() ? note : current + "; " + note);
+        poMapper.updateById(po);
+        return po;
+    }
+
     public static BigDecimal nz(BigDecimal v) {
         return v == null ? BigDecimal.ZERO : v;
     }
