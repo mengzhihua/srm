@@ -148,5 +148,32 @@ public class OpenIrControllerTest {
         assertEquals(
                 objectMapper.readTree(firstSuggest).get("data").get("code").asText(),
                 objectMapper.readTree(replaySuggest).get("data").get("code").asText());
+
+        mockMvc.perform(post("/api/open/ir/submit-pr")
+                        .header("X-Api-Key", "test-open-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"PR-IR-DRAFT\",\"idempotencyKey\":\"SRM-SUBMIT-1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("SUBMITTED"));
+        mockMvc.perform(post("/api/open/ir/approve-pr")
+                        .header("X-Api-Key", "test-open-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"PR-IR-SUBMITTED\",\"idempotencyKey\":\"SRM-APR-1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("APPROVED"));
+        mockMvc.perform(post("/api/open/ir/expedite-po")
+                        .header("X-Api-Key", "test-open-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"poCode\":\"PO-IR-EXPEDITE\",\"idempotencyKey\":\"SRM-EXP-1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+        mockMvc.perform(post("/api/open/ir/expedite-po")
+                        .header("X-Api-Key", "test-open-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"poCode\":\"PO-IR-EXPEDITE\",\"idempotencyKey\":\"SRM-EXP-1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
     }
 }
