@@ -39,6 +39,7 @@ public class OpenIrControllerTest {
         JsonNode delayed = null;
         JsonNode po = null;
         JsonNode pr = null;
+        JsonNode submittedPr = null;
         for (JsonNode row : rows) {
             if ("ASN-IR-DELAY".equals(row.path("bizKey").asText())) {
                 delayed = row;
@@ -49,6 +50,9 @@ public class OpenIrControllerTest {
             if ("PR-IR-DRAFT".equals(row.path("bizKey").asText())) {
                 pr = row;
             }
+            if ("PR-IR-SUBMITTED".equals(row.path("bizKey").asText())) {
+                submittedPr = row;
+            }
         }
         assertNotNull(delayed, "应包含延误 ASN");
         assertEquals("DELAYED", delayed.path("status").asText());
@@ -58,6 +62,8 @@ public class OpenIrControllerTest {
         assertEquals("SKU001", po.path("sku").asText());
         assertNotNull(pr);
         assertEquals("DRAFT", pr.path("status").asText());
+        assertNotNull(submittedPr, "应包含待批准采购申请");
+        assertEquals("SUBMITTED", submittedPr.path("status").asText());
         JsonNode risk = null;
         for (JsonNode row : rows) {
             if ("SUPPLIER".equals(row.path("dataType").asText())
@@ -105,6 +111,42 @@ public class OpenIrControllerTest {
         }
         assertNotNull(submitted);
         assertEquals("SUBMITTED", submitted.path("status").asText());
-        assertTrue(true);
+
+        mockMvc.perform(post("/api/open/ir/actions")
+                        .header("X-Api-Key", "test-open-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"SRM_APPROVE_PR\",\"targetKey\":\"PR-IR-SUBMITTED\","
+                                + "\"idempotencyKey\":\"SRM-APR-1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("APPROVED"));
+        mockMvc.perform(post("/api/open/ir/actions")
+                        .header("X-Api-Key", "test-open-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"SRM_APPROVE_PR\",\"targetKey\":\"PR-IR-SUBMITTED\","
+                                + "\"idempotencyKey\":\"SRM-APR-1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("APPROVED"));
+
+        String suggest = "{\"type\":\"SRM_PURCHASE_SUGGEST\",\"targetKey\":\"SKU003\","
+                + "\"sku\":\"SKU003\",\"qty\":5,\"idempotencyKey\":\"SRM-SUG-1\"}";
+        String firstSuggest = mockMvc.perform(post("/api/open/ir/purchase-suggest")
+                        .header("X-Api-Key", "test-open-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(suggest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String replaySuggest = mockMvc.perform(post("/api/open/ir/purchase-suggest")
+                        .header("X-Api-Key", "test-open-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(suggest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        assertEquals(
+                objectMapper.readTree(firstSuggest).get("data").get("code").asText(),
+                objectMapper.readTree(replaySuggest).get("data").get("code").asText());
     }
 }

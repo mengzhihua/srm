@@ -45,6 +45,14 @@ SELECT id, 1, 'SKU001', 30, CURRENT_DATE + 7, 0, CURRENT_TIMESTAMP, CURRENT_TIME
 FROM srm_purchase_requisition WHERE code='PR-IR-DRAFT'
 AND NOT EXISTS (SELECT 1 FROM srm_pr_line WHERE pr_id = (SELECT id FROM srm_purchase_requisition WHERE code='PR-IR-DRAFT'));
 
+INSERT INTO srm_purchase_requisition (code, plant_code, requester, department, status, remark, created_at, updated_at)
+SELECT 'PR-IR-SUBMITTED', 'P001', 'IR', 'CONTROL_TOWER', 'SUBMITTED', 'IR 待批准采购申请', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM srm_purchase_requisition WHERE code='PR-IR-SUBMITTED');
+INSERT INTO srm_pr_line (pr_id, line_no, material_code, qty, required_date, ordered_qty, created_at, updated_at)
+SELECT id, 1, 'SKU001', 18, CURRENT_DATE + 7, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM srm_purchase_requisition WHERE code='PR-IR-SUBMITTED'
+AND NOT EXISTS (SELECT 1 FROM srm_pr_line WHERE pr_id = (SELECT id FROM srm_purchase_requisition WHERE code='PR-IR-SUBMITTED'));
+
 INSERT INTO srm_purchase_order (code, supplier_code, plant_code, currency, total_amount, status, expected_date, source_type, remark, created_at, updated_at)
 SELECT 'PO-IR-EXPEDITE', 'SUP01', 'P001', 'CNY', 4500.00, 'CONFIRMED', CURRENT_DATE - 2, 'MANUAL', 'IR 催单演示', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 WHERE NOT EXISTS (SELECT 1 FROM srm_purchase_order WHERE code='PO-IR-EXPEDITE');

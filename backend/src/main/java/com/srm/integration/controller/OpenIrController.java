@@ -130,8 +130,10 @@ public class OpenIrController {
             @RequestHeader(value = "X-Api-Key", required = false) String key,
             @RequestBody SuggestReq req) {
         checkKey(key);
-        return R.ok(prService.suggestFromControlTower(
-                sku(req), qty(req), plant(req), remark(req)));
+        String sku = sku(req);
+        return R.ok((PurchaseRequisition) executeOnce(
+                cacheKey("SRM_PURCHASE_SUGGEST", first(req.getTargetKey(), sku), req.getIdempotencyKey()),
+                () -> prService.suggestFromControlTower(sku, qty(req), plant(req), remark(req))));
     }
 
     @PostMapping("/actions")
