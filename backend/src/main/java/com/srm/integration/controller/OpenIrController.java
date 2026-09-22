@@ -65,6 +65,8 @@ public class OpenIrController {
         private BigDecimal qty;
         private String plantCode;
         private String remark;
+        private String code;
+        private String poCode;
         private String idempotencyKey;
         private Map<String, Object> params;
     }
@@ -158,6 +160,57 @@ public class OpenIrController {
             }
             throw new BizException("不支持的 IR 指令: " + type);
         }));
+    }
+
+    @PostMapping("/submit-pr")
+    public R<Object> submitPr(
+            @RequestHeader(value = "X-Api-Key", required = false) String key,
+            @RequestBody SuggestReq req) {
+        return typedAction(key, req, "SRM_SUBMIT_PR", "code");
+    }
+
+    @PostMapping("/approve-pr")
+    public R<Object> approvePr(
+            @RequestHeader(value = "X-Api-Key", required = false) String key,
+            @RequestBody SuggestReq req) {
+        return typedAction(key, req, "SRM_APPROVE_PR", "code");
+    }
+
+    @PostMapping("/expedite-po")
+    public R<Object> expeditePo(
+            @RequestHeader(value = "X-Api-Key", required = false) String key,
+            @RequestBody SuggestReq req) {
+        return typedAction(key, req, "SRM_EXPEDITE_PO", "poCode", "code");
+    }
+
+    private R<Object> typedAction(String key, SuggestReq req, String type, String... altKeys) {
+        if (req == null) {
+            req = new SuggestReq();
+        }
+        req.setType(type);
+        if (blank(req.getTargetKey())) {
+            for (String altKey : altKeys) {
+                String value = altValue(req, altKey);
+                if (!blank(value)) {
+                    req.setTargetKey(value);
+                    break;
+                }
+            }
+        }
+        return actions(key, req);
+    }
+
+    private static String altValue(SuggestReq req, String name) {
+        if ("code".equals(name) && !blank(req.getCode())) {
+            return req.getCode();
+        }
+        if ("poCode".equals(name) && !blank(req.getPoCode())) {
+            return req.getPoCode();
+        }
+        if (req.getParams() == null) {
+            return null;
+        }
+        return string(req.getParams().get(name));
     }
 
     private Object executeOnce(String cacheKey, java.util.function.Supplier<Object> work) {
