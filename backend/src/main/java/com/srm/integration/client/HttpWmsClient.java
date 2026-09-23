@@ -119,8 +119,11 @@ public class HttpWmsClient implements WmsClient {
                 .eq(Supplier::getCode, asn.getSupplierCode()));
         Plant plant = plantMapper.selectOne(new LambdaQueryWrapper<Plant>()
                 .eq(Plant::getCode, asn.getPlantCode()));
-        if (plant == null || plant.getWmsWarehouseCode() == null) {
+        if (plant == null || plant.getWmsWarehouseCode() == null || plant.getWmsWarehouseCode().trim().isEmpty()) {
             throw new BizException("工厂 " + asn.getPlantCode() + " 未配置 WMS 仓库映射");
+        }
+        if (supplier == null || supplier.getWmsSupplierCode() == null || supplier.getWmsSupplierCode().trim().isEmpty()) {
+            throw new BizException("供应商 " + asn.getSupplierCode() + " 没有 WMS 供应商映射");
         }
         Map<String, String> wmsItems = materialMapper.selectList(null).stream()
                 .filter(m -> m.getWmsItemCode() != null)
@@ -129,8 +132,7 @@ public class HttpWmsClient implements WmsClient {
         Map<String, Object> body = new HashMap<>();
         body.put("warehouseCode", plant.getWmsWarehouseCode());
         body.put("ownerCode", plant.getWmsOwnerCode());
-        body.put("supplierCode", supplier != null && supplier.getWmsSupplierCode() != null
-                ? supplier.getWmsSupplierCode() : asn.getSupplierCode());
+        body.put("supplierCode", supplier.getWmsSupplierCode());
         body.put("type", "PURCHASE");
         body.put("externalNo", asn.getCode());
         if (asn.getExpectedDate() != null) {

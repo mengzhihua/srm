@@ -61,7 +61,8 @@ public class IntegrationController {
         checkKey(key);
         Asn asn = findAsn(payload);
         try {
-            GoodsReceipt gr = receiptService.processWmsReceipt(asn, payload, "WMS_CALLBACK", true, true);
+            GoodsReceipt gr = receiptService.processWmsReceipt(
+                    asn, payload, "WMS_CALLBACK", payload.delta(), true);
             logService.inbound("WMS", IntegrationLogService.WMS_RECEIPT_IN,
                     "ASN", asn.getId(), asn.getCode(), payload, "SUCCESS", null);
             return R.ok(gr);

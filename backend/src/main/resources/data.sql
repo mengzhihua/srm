@@ -6,8 +6,9 @@ INSERT INTO srm_supplier (code, name, short_name, contact, phone, email, address
 SELECT 'SUP02', '东莞线材制造', '东莞线材', '赵敏', '13700000002', 'sales@sup02.example', '东莞市松山湖', '原材料', '月结60天', 'CNY', '100020', 'SUP02', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 WHERE NOT EXISTS (SELECT 1 FROM srm_supplier WHERE code='SUP02');
 INSERT INTO srm_supplier (code, name, short_name, contact, phone, email, address, category, payment_terms, currency, sap_vendor_code, wms_supplier_code, status, created_at, updated_at)
-SELECT 'SUP03', '苏州包装制品', '苏州包装', '陈杰', '13700000003', 'sales@sup03.example', '苏州市工业园区', '包材', '货到付款', 'CNY', '100030', 'SUP03', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+SELECT 'SUP03', '苏州包装制品', '苏州包装', '陈杰', '13700000003', 'sales@sup03.example', '苏州市工业园区', '包材', '货到付款', 'CNY', '100030', NULL, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 WHERE NOT EXISTS (SELECT 1 FROM srm_supplier WHERE code='SUP03');
+UPDATE srm_supplier SET wms_supplier_code = NULL WHERE code = 'SUP03' AND wms_supplier_code = 'SUP03';
 UPDATE srm_supplier SET score = 96, grade = 'A' WHERE code = 'SUP01' AND (score IS NULL OR score = 0);
 UPDATE srm_supplier SET score = 88, grade = 'B' WHERE code = 'SUP02' AND (score IS NULL OR score = 0);
 UPDATE srm_supplier SET score = 72, grade = 'C' WHERE code = 'SUP03' AND (score IS NULL OR score = 0);
