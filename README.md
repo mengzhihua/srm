@@ -229,11 +229,11 @@ DB_HOST=127.0.0.1 DB_PORT=3306 DB_NAME=srm DB_USER=root DB_PASSWORD=xxx \
 | `SRM_ADMIN_PASSWORD` | 首次启动创建 admin 的初始密码 | `admin123` |
 | `SRM_CORS_ORIGINS` | 允许跨域来源，逗号分隔 | `http://localhost:5174` |
 | `SRM_H2_CONSOLE` | H2 控制台开关 | `false` |
-| `SRM_SAP_MODE` | `mock` / `http` | `mock` |
+| `SRM_SAP_MODE` | `mock` / `http` / `ecosystem` | `mock` |
 | `SRM_SAP_BASE_URL` / `SRM_SAP_USERNAME` / `SRM_SAP_PASSWORD` | http 模式下 S/4 OData 地址与 Basic 认证 | — |
 | `SRM_SAP_MOCK_FAIL_RATE` | mock 模式随机失败率（0~1） | `0` |
 | `SRM_WMS_MODE` | `mock` / `http` | `mock` |
-| `SRM_WMS_BASE_URL` | WMS 后端地址 | `http://localhost:8080` |
+| `SRM_WMS_BASE_URL` | WMS 后端地址 | `http://localhost:8083` |
 | `SRM_WMS_USERNAME` / `SRM_WMS_PASSWORD` | WMS 登录账号（自动取 token，401 刷新） | `admin/admin123` |
 | `SRM_WMS_POLL_INTERVAL` | 轮询 WMS ASN 间隔（ms，仅 http 模式生效） | `30000` |
 | `SRM_INTEGRATION_API_KEY` | WMS 回调接口的 `X-Api-Key` | `srm-wms-key` |
@@ -250,7 +250,7 @@ cd ../wms/backend && mvn spring-boot:run
 
 # 2. 重启 SRM 为 http 模式（新建库建议先 rm -rf backend/data）
 cd backend && rm -rf data
-SRM_WMS_MODE=http SRM_WMS_BASE_URL=http://localhost:8080 SRM_WMS_POLL_INTERVAL=5000 \
+SRM_WMS_MODE=http SRM_WMS_BASE_URL=http://localhost:8083 SRM_WMS_POLL_INTERVAL=5000 \
   mvn spring-boot:run
 
 # 3. 跑联调冒烟
@@ -289,7 +289,7 @@ WMS 侧字段约定（已验证）：入库单行 `itemCode / lotNo / expectedQt
 
 ### SRM 调用外部（可扩展）
 
-- `SapClient`：`MockSapClient`（默认）生成模拟凭证号（PO `45xxxxxxxx`、物料凭证 `50xxxxxxxx`、发票 `51xxxxxxxx`）；`HttpSapClient`（`SRM_SAP_MODE=http`）
+- `SapClient`：`MockSapClient`（默认）生成模拟凭证号（PO `45xxxxxxxx`、物料凭证 `50xxxxxxxx`、发票 `51xxxxxxxx`）；`HttpSapClient`（`SRM_SAP_MODE=http`）走 S/4 OData；`EcosystemSapClient`（`SRM_SAP_MODE=ecosystem`）登录本套 SAP 演示并调用 `/api/mm/po`、`/migo`、`/miro`。物料和供应商必须已在 SAP 主数据中。
   走 RestTemplate + Basic Auth，映射 S/4 OData 风格路径
   `/API_PURCHASEORDER_PROCESS_SRV/A_PurchaseOrder`（PO）、
   `/API_MATERIAL_DOCUMENT_SRV/A_MaterialDocumentHeader`（GR/MIGO 101）、
@@ -367,7 +367,7 @@ cd srm-1.0.0
 
 浏览器访问 `http://127.0.0.1:8087`。默认账号 `admin / admin123`。
 
-十二套系统可同时启动：OMS 8081 / WMS 8082 / TMS 8083 / BMS 8084 / SAP 8085 / OA 8086 / SRM 8087 / BOM 8088 / INV 8089 / IR 8090 / CRM 8091 / DMS 8092。
+十二套系统可同时启动：OMS 8081 / WMS 8083 / TMS 8082 / BMS 8084 / SAP 8085 / OA 8086 / SRM 8087 / BOM 8088 / INV 8089 / IR 8090 / CRM 8091 / DMS 8092。
 
 
 ## 编码与中文显示

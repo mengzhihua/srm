@@ -50,17 +50,18 @@ srm:
     # 允许跨域的前端来源，逗号分隔；前后端同源部署时可设为空
     origins: ${SRM_CORS_ORIGINS:http://localhost:5174}
   sap:
-    # mock=本地模拟（生成 SAP 单号）；http=调 S/4HANA OData 接口
+    # mock=本地模拟凭证；http=S/4HANA OData；ecosystem=本套 SAP 演示的登录和 /api/mm 过账
     mode: ${SRM_SAP_MODE:mock}
-    base-url: ${SRM_SAP_BASE_URL:}
-    username: ${SRM_SAP_USERNAME:}
-    password: ${SRM_SAP_PASSWORD:}
+    base-url: ${SRM_SAP_BASE_URL:http://localhost:8085}
+    username: ${SRM_SAP_USERNAME:admin}
+    password: ${SRM_SAP_PASSWORD:admin123}
     # mock 模式下的随机失败率（0~1），用于演示失败重试
     mock-fail-rate: ${SRM_SAP_MOCK_FAIL_RATE:0}
   wms:
     # mock=本地模拟；http=调本机/远端 WMS REST 接口
     mode: ${SRM_WMS_MODE:mock}
-    base-url: ${SRM_WMS_BASE_URL:http://localhost:8080}
+    # 发行包和控制塔种子是 8083。mvn spring-boot:run 默认 8080 时改这个地址。
+    base-url: ${SRM_WMS_BASE_URL:http://localhost:8083}
     username: ${SRM_WMS_USERNAME:admin}
     password: ${SRM_WMS_PASSWORD:admin123}
     # http 模式下轮询在途 ASN 收货状态的间隔
