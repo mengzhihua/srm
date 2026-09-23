@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.srm.basic.entity.PriceList;
+import com.srm.basic.mapper.PriceListMapper;
+import com.srm.basic.service.AgreementPrice;
 import com.srm.common.BizException;
 import com.srm.common.CodeGenerator;
 import com.srm.integration.client.SapClient;
@@ -18,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -28,6 +32,7 @@ import java.util.List;
 public class PurchaseOrderService {
     private final PurchaseOrderMapper poMapper;
     private final PoLineMapper lineMapper;
+    private final PriceListMapper priceListMapper;
     private final SapClient sapClient;
     private final IntegrationLogService logService;
     private final CodeGenerator codeGenerator;
@@ -70,6 +75,7 @@ public class PurchaseOrderService {
         if (po.getSourceType() == null) {
             po.setSourceType("MANUAL");
         }
+        applyAgreement(po);
         fillAmounts(po);
         poMapper.insert(po);
         saveLines(po);
@@ -90,6 +96,7 @@ public class PurchaseOrderService {
         db.setExpectedDate(po.getExpectedDate());
         db.setRemark(po.getRemark());
         db.setLines(po.getLines());
+        applyAgreement(db);
         fillAmounts(db);
         poMapper.updateById(db);
         lineMapper.delete(new LambdaQueryWrapper<PoLine>().eq(PoLine::getPoId, id));
@@ -191,6 +198,20 @@ public class PurchaseOrderService {
         for (PoLine l : po.getLines()) {
             if (l.getMaterialCode() == null || l.getQty() == null || l.getQty().signum() <= 0) {
                 throw new BizException("订单行物料/数量不合法");
+            }
+        }
+    }
+
+    private void applyAgreement(PurchaseOrder po) {
+        List<PriceList> lists = priceListMapper.selectList(null);
+        LocalDate today = LocalDate.now();
+        for (PoLine line : po.getLines()) {
+            if (line.getPrice() != null && line.getPrice().signum() > 0) {
+                continue;
+            }
+            BigDecimal agreed = AgreementPrice.pick(lists, po.getSupplierCode(), line.getMaterialCode(), line.getQty(), today);
+            if (agreed != null) {
+                line.setPrice(agreed);
             }
         }
     }

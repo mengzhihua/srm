@@ -15,6 +15,8 @@ public class Material extends BaseEntity {
     private String spec;
     private String unit;
     private String category;
+    private String brand;
+    private String mfrPartNo;
     private String sapMaterialCode;
     private String wmsItemCode;
     private java.math.BigDecimal taxRate;

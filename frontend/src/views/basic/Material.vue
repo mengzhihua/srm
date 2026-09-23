@@ -13,6 +13,8 @@ const columns = [
   { prop: 'spec', label: '规格', width: 110 },
   { prop: 'unit', label: '单位', width: 70, default: 'EA' },
   { prop: 'category', label: '品类', filter: true, width: 100 },
+  { prop: 'brand', label: '品牌', width: 100 },
+  { prop: 'mfrPartNo', label: '制造商料号', width: 130 },
   { prop: 'sapMaterialCode', label: 'SAP物料', width: 100 },
   { prop: 'wmsItemCode', label: 'WMS物料', width: 100 },
   { prop: 'taxRate', label: '税率', type: 'number', precision: 4, min: 0, width: 90 },

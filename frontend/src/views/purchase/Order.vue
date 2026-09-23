@@ -68,6 +68,7 @@
             <el-table-column width="50"><template #default="{ $index }"><el-button link type="danger" @click="form.lines.splice($index, 1)">删</el-button></template></el-table-column>
           </el-table>
           <el-button size="small" style="margin-top: 6px" @click="form.lines.push({ qty: 1 })">+ 添加行</el-button>
+          <p style="margin: 6px 0 0; color: #667085">单价留空时，按下单日仍有效、并且达到起订量的协议价。</p>
         </el-form-item>
       </el-form>
       <template #footer>

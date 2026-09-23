@@ -56,6 +56,8 @@
             <el-table-column width="60"><template #default="{ $index }"><el-button link type="danger" @click="form.lines.splice($index, 1)">删</el-button></template></el-table-column>
           </el-table>
           <el-button size="small" style="margin-top: 6px" @click="form.lines.push({ qty: 1 })">+ 添加行</el-button>
+          <el-input v-model="paste" type="textarea" :rows="3" placeholder="每行一条需求，可写物料编码、制造商料号，或品牌加料号" style="margin-top: 8px" />
+          <el-button size="small" style="margin-top: 6px" @click="matchPaste">匹配到询价行</el-button>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -136,6 +138,7 @@ const saving = ref(false)
 const visible = ref(false)
 const detailVisible = ref(false)
 const form = ref({ lines: [] })
+const paste = ref('')
 const supplierSel = ref([])
 const detail = ref({})
 const quoteForm = reactive({ lines: [], remark: '' })
@@ -161,8 +164,20 @@ async function load() {
 
 function openForm() {
   form.value = { title: '', plantCode: 'P001', lines: [{ qty: 1 }] }
+  paste.value = ''
   supplierSel.value = []
   visible.value = true
+}
+
+async function matchPaste() {
+  const lines = paste.value.split(/\n/).map((text) => text.trim()).filter(Boolean).map((text) => ({ text, qty: 1 }))
+  if (!lines.length) return ElMessage.warning('请先粘贴需求')
+  const matched = await sourcing.catalogMatch({ lines })
+  const hits = matched.filter((row) => row.materialCode)
+  form.value.lines = form.value.lines.filter((row) => row.materialCode)
+  hits.forEach((row) => form.value.lines.push({ materialCode: row.materialCode, qty: Number(row.qty) || 1 }))
+  const missed = matched.length - hits.length
+  ElMessage.success(missed ? `匹配 ${hits.length} 行，${missed} 行没有对上物料` : `匹配 ${hits.length} 行`)
 }
 
 async function save() {
