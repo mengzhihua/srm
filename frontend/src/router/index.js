@@ -17,6 +17,7 @@ export const menus = [
     path: '/sourcing', name: '寻源管理', icon: 'Aim', buyerSide: true,
     children: [
       { path: 'pr', name: '采购申请', component: () => import('../views/sourcing/PurchaseRequisition.vue') },
+      { path: 'shelf', name: '选品货架', component: () => import('../views/sourcing/Shelf.vue') },
       { path: 'demand', name: '需求清单', component: () => import('../views/sourcing/Demand.vue') },
       { path: 'rfq', name: '询价单(RFQ)', component: () => import('../views/sourcing/Rfq.vue') }
     ]

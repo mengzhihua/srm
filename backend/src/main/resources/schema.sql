@@ -410,3 +410,25 @@ CREATE TABLE IF NOT EXISTS srm_demand_item (
   created_at TIMESTAMP,
   updated_at TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS srm_shelf_mark (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  owner_name VARCHAR(64) NOT NULL,
+  material_code VARCHAR(64) NOT NULL,
+  kind VARCHAR(16) NOT NULL,
+  seen_at TIMESTAMP,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP,
+  CONSTRAINT uk_srm_shelf_mark UNIQUE (owner_name, material_code, kind)
+);
+
+CREATE TABLE IF NOT EXISTS srm_coupon (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  owner_name VARCHAR(64) NOT NULL,
+  code VARCHAR(64) NOT NULL,
+  percent DECIMAL(8,2) NOT NULL,
+  status INT DEFAULT 1,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP,
+  CONSTRAINT uk_srm_coupon_owner UNIQUE (owner_name, code)
+);
