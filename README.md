@@ -322,6 +322,12 @@ scripts/smoke-wms.sh    # 需 WMS 8080 + SRM http 模式，真实联调
 按供应商 + `yyyy-MM` 汇总为月度考核：准时率 / 数量准确率 / 质量率 / 均分，
 `>=90 A`、`>=80 B`、`>=70 C`、否则 `D`，并回写供应商档案的 grade/score。
 
+## 控制塔对接
+
+采购申请、订单、ASN 和供应商快照，以及采购建议、提交、审批、催单，见 [技术方案](docs/技术方案.md)。
+
+有 API Key 时走 `GET/POST /api/open/ir/snapshots|actions`，统一口不可用时回退 `/purchase-suggest`、`/submit-pr`、`/approve-pr`、`/expedite-po`。没有 Key 时，控制塔登录后打 `/api/sourcing/pr` 和采购订单更新。
+
 ## 发布包（开箱即用）
 
 前端生产构建打进 Spring Boot 可执行 JAR。三种用法：
