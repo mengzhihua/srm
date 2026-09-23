@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS srm_material (
   spec VARCHAR(128),
   unit VARCHAR(16) DEFAULT 'EA',
   category VARCHAR(64),
+  brand VARCHAR(64),
+  mfr_part_no VARCHAR(64),
   sap_material_code VARCHAR(64),
   wms_item_code VARCHAR(64),
   tax_rate DECIMAL(6,4),
@@ -39,6 +41,8 @@ CREATE TABLE IF NOT EXISTS srm_material (
   updated_at TIMESTAMP,
   CONSTRAINT uk_srm_material_code UNIQUE (code)
 );
+ALTER TABLE srm_material ADD COLUMN IF NOT EXISTS brand VARCHAR(64);
+ALTER TABLE srm_material ADD COLUMN IF NOT EXISTS mfr_part_no VARCHAR(64);
 
 CREATE TABLE IF NOT EXISTS srm_plant (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -394,3 +398,37 @@ CREATE TABLE IF NOT EXISTS srm_op_log (
   created_at TIMESTAMP
 );
 CREATE INDEX idx_srm_op_log_created ON srm_op_log (created_at);
+
+CREATE TABLE IF NOT EXISTS srm_demand_item (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  owner_name VARCHAR(64) NOT NULL,
+  request_text VARCHAR(255) NOT NULL,
+  material_code VARCHAR(64),
+  qty DECIMAL(18,3) NOT NULL,
+  status VARCHAR(16) NOT NULL,
+  pr_id BIGINT,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS srm_shelf_mark (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  owner_name VARCHAR(64) NOT NULL,
+  material_code VARCHAR(64) NOT NULL,
+  kind VARCHAR(16) NOT NULL,
+  seen_at TIMESTAMP,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP,
+  CONSTRAINT uk_srm_shelf_mark UNIQUE (owner_name, material_code, kind)
+);
+
+CREATE TABLE IF NOT EXISTS srm_coupon (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  owner_name VARCHAR(64) NOT NULL,
+  code VARCHAR(64) NOT NULL,
+  percent DECIMAL(8,2) NOT NULL,
+  status INT DEFAULT 1,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP,
+  CONSTRAINT uk_srm_coupon_owner UNIQUE (owner_name, code)
+);
