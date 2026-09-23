@@ -27,6 +27,7 @@ public class DemandService {
     private final DemandItemMapper demandMapper;
     private final MaterialMapper materialMapper;
     private final PrService prService;
+    private final ShelfService shelfService;
 
     public List<DemandItem> mine() {
         CurrentUser.requireBuyerSide();
@@ -37,7 +38,7 @@ public class DemandService {
     }
 
     @Transactional
-    public DemandItem add(String text, BigDecimal qty) {
+    public DemandItem add(String text, BigDecimal qty, String couponCode) {
         CurrentUser.requireBuyerSide();
         if (text == null || text.trim().isEmpty() || qty == null || qty.signum() <= 0) {
             throw new BizException("需求和数量必填");
@@ -50,6 +51,11 @@ public class DemandService {
         item.setStatus("OPEN");
         if (material != null) {
             item.setMaterialCode(material.getCode());
+        }
+        if (couponCode != null && !couponCode.trim().isEmpty()) {
+            com.srm.sourcing.entity.Coupon coupon = shelfService.useCoupon(couponCode);
+            item.setCouponCode(coupon.getCode());
+            item.setCouponPercent(coupon.getPercent());
         }
         demandMapper.insert(item);
         return item;
@@ -98,6 +104,7 @@ public class DemandService {
             line.setMaterialCode(item.getMaterialCode());
             line.setQty(item.getQty());
             line.setRemark(item.getRequestText());
+            line.setCouponPercent(item.getCouponPercent());
             lines.add(line);
         }
         pr.setLines(lines);

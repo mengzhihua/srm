@@ -25,7 +25,8 @@ public class DemandController {
 
     @PostMapping("/demand")
     public R<DemandItem> add(@RequestBody AddRequest req) {
-        return R.ok(demandService.add(req == null ? null : req.getText(), req == null ? null : req.getQty()));
+        return R.ok(demandService.add(req == null ? null : req.getText(), req == null ? null : req.getQty(),
+                req == null ? null : req.getCouponCode()));
     }
 
     @PostMapping("/demand/convert")
@@ -42,6 +43,7 @@ public class DemandController {
     public static class AddRequest {
         private String text;
         private BigDecimal qty;
+        private String couponCode;
     }
 
     @Data

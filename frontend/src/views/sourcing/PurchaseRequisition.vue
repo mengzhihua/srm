@@ -22,6 +22,7 @@
             <el-button link type="primary" size="small" @click="openDetail(row)">详情</el-button>
             <template v-if="canWrite()">
               <el-button v-if="row.status === 'DRAFT'" link type="primary" size="small" @click="act(row, 'submit')">提交</el-button>
+              <el-button v-if="['DRAFT','SUBMITTED'].includes(row.status)" link size="small" @click="openMail(row)">登记邮件</el-button>
               <el-button v-if="row.status === 'SUBMITTED'" link type="success" size="small" @click="act(row, 'approve')">审批</el-button>
               <el-button v-if="row.status === 'SUBMITTED'" link type="danger" size="small" @click="act(row, 'reject')">驳回</el-button>
               <el-button v-if="row.status === 'APPROVED'" link type="warning" size="small" @click="openToPo(row)">转订单</el-button>
@@ -83,8 +84,10 @@
           <el-table-column prop="materialCode" label="物料" width="110" />
           <el-table-column label="数量" width="130"><template #default="{ row }"><el-input-number v-model="row.qty" :min="0.001" :precision="3" /></template></el-table-column>
           <el-table-column label="单价" width="140"><template #default="{ row }"><el-input-number v-model="row.price" :min="0" :precision="4" /></template></el-table-column>
+          <el-table-column label="优惠券%" width="90"><template #default="{ row }">{{ row.couponPercent || '—' }}</template></el-table-column>
           <el-table-column label="交期" width="150"><template #default="{ row }"><el-date-picker v-model="row.deliveryDate" type="date" value-format="YYYY-MM-DD" /></template></el-table-column>
         </el-table>
+        <p style="margin: 8px 0 0; color: #667085">单价留空时，按协议折扣档再乘优惠券。填了单价就以填写的为准。</p>
       </el-form>
       <template #footer>
         <el-button @click="poVisible = false">取消</el-button>
@@ -109,6 +112,15 @@
         <el-button type="primary" :loading="saving" @click="doToRfq">生成询价</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="mailVisible" title="登记邮件审批" width="420px" destroy-on-close>
+      <p style="margin-top: 0; color: #667085">只记下收件人，不发送邮件，也不改变申请状态。</p>
+      <el-input v-model="mailForm.email" placeholder="收件邮箱" />
+      <template #footer>
+        <el-button @click="mailVisible = false">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="recordMail">登记</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -128,6 +140,8 @@ const saving = ref(false)
 const visible = ref(false)
 const poVisible = ref(false)
 const rfqVisible = ref(false)
+const mailVisible = ref(false)
+const mailForm = reactive({ id: null, email: '' })
 const form = ref({ lines: [] })
 const poForm = reactive({ prId: null, supplierCode: '', lines: [] })
 const rfqForm = reactive({ prId: null, title: '', supplierCodes: [], deadline: '', remark: '' })
@@ -175,9 +189,24 @@ function openToPo(row) {
   sourcing.prGet(pr.id).then((full) => {
     poForm.prId = pr.id
     poForm.supplierCode = ''
-    poForm.lines = full.lines.map((l) => ({ materialCode: l.materialCode, qty: l.qty, price: null, deliveryDate: l.requiredDate }))
+    poForm.lines = full.lines.map((l) => ({ materialCode: l.materialCode, qty: l.qty, price: null, couponPercent: l.couponPercent, deliveryDate: l.requiredDate }))
     poVisible.value = true
   })
+}
+
+function openMail(row) {
+  mailForm.id = row.id
+  mailForm.email = ''
+  mailVisible.value = true
+}
+
+async function recordMail() {
+  saving.value = true
+  try {
+    const row = await sourcing.prMail(mailForm.id, { email: mailForm.email })
+    ElMessage.success(`${row.detail}，申请状态不变`)
+    mailVisible.value = false
+  } finally { saving.value = false }
 }
 
 async function doToPo() {

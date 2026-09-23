@@ -44,6 +44,16 @@ class ShelfPriceTest {
     }
 
     @Test
+    void orderKeepsTypedPriceAndAppliesCouponOnlyToEmptyPrice() {
+        java.util.List<ShelfPrice.Band> bands = Collections.singletonList(new ShelfPrice.Band(new BigDecimal("10"), new BigDecimal("0.95")));
+        assertEquals(0, ShelfPrice.forOrder(new BigDecimal("50"), new BigDecimal("45"), new BigDecimal("10"), bands, new BigDecimal("10"))
+                .compareTo(new BigDecimal("50")));
+        assertEquals(0, ShelfPrice.forOrder(null, new BigDecimal("45"), new BigDecimal("10"), bands, new BigDecimal("10"))
+                .compareTo(new BigDecimal("38.4750")));
+        assertNull(ShelfPrice.forOrder(null, null, new BigDecimal("10"), bands, new BigDecimal("10")));
+    }
+
+    @Test
     void couponPercentOffRejectsOverOneHundred() {
         BigDecimal price = new BigDecimal("42.7500");
         assertEquals(0, ShelfPrice.afterCoupon(price, null).compareTo(price));

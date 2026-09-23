@@ -32,6 +32,7 @@ export const sourcing = {
   prReject: (id) => http.post(`/sourcing/pr/${id}/reject`),
   prCancel: (id) => http.post(`/sourcing/pr/${id}/cancel`),
   prToPo: (id, data) => http.post(`/sourcing/pr/${id}/to-po`, data),
+  prMail: (id, data) => http.post(`/sourcing/pr/${id}/mail`, data),
   prToRfq: (id, data) => http.post(`/sourcing/pr/${id}/to-rfq`, data),
   rfqPage: (params) => http.get('/sourcing/rfq/page', { params }),
   rfqGet: (id) => http.get(`/sourcing/rfq/${id}`),

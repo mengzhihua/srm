@@ -23,4 +23,5 @@ public class PrLine extends BaseEntity {
     private LocalDate requiredDate;
     private BigDecimal orderedQty;
     private String remark;
+    private BigDecimal couponPercent;
 }

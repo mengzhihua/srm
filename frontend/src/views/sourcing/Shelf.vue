@@ -174,8 +174,11 @@ async function remember(card) {
 
 async function addDemand(card) {
   await sourcing.shelfHistory({ materialCode: card.materialCode })
-  if (couponApplied.value) await sourcing.shelfUseCoupon({ code: couponCode.value.trim() })
-  await sourcing.demandAdd({ text: card.materialCode, qty: qty.value })
+  await sourcing.demandAdd({
+    text: card.materialCode,
+    qty: qty.value,
+    couponCode: couponApplied.value ? couponCode.value.trim() : undefined
+  })
   ElMessage.success(`已加入需求清单 ${card.materialCode}`)
   await load()
 }

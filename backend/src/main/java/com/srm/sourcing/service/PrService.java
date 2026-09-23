@@ -170,6 +170,7 @@ public class PrService {
         po.setPlantCode(pr.getPlantCode());
         po.setSourceType("PR");
         po.setSourceCode(pr.getCode());
+        copyCoupon(pr.getLines(), lines);
         po.setLines(lines);
         PurchaseOrder saved = poService.create(po);
         pr.setStatus("ORDERED");
@@ -180,5 +181,23 @@ public class PrService {
             lineMapper.updateById(l);
         }
         return saved;
+    }
+
+    private static void copyCoupon(List<PrLine> prLines, List<com.srm.purchase.entity.PoLine> lines) {
+        if (prLines == null || lines == null) {
+            return;
+        }
+        for (com.srm.purchase.entity.PoLine line : lines) {
+            if (line.getCouponPercent() != null || line.getMaterialCode() == null) {
+                continue;
+            }
+            for (PrLine prLine : prLines) {
+                if (prLine.getMaterialCode() != null && prLine.getMaterialCode().equalsIgnoreCase(line.getMaterialCode())
+                        && prLine.getCouponPercent() != null) {
+                    line.setCouponPercent(prLine.getCouponPercent());
+                    break;
+                }
+            }
+        }
     }
 }

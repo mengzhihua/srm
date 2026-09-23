@@ -216,10 +216,12 @@ public class PurchaseOrderService {
                 continue;
             }
             PriceList chosen = AgreementPrice.choose(lists, po.getSupplierCode(), line.getMaterialCode(), line.getQty(), today);
-            if (chosen == null) {
-                continue;
+            BigDecimal agreement = chosen == null ? null : chosen.getPrice();
+            List<ShelfPrice.Band> rates = chosen == null ? new ArrayList<ShelfPrice.Band>() : ratesFor(bands, chosen.getId());
+            BigDecimal priced = ShelfPrice.forOrder(null, agreement, line.getQty(), rates, line.getCouponPercent());
+            if (priced != null) {
+                line.setPrice(priced);
             }
-            line.setPrice(ShelfPrice.afterBands(chosen.getPrice(), line.getQty(), ratesFor(bands, chosen.getId())));
         }
     }
 

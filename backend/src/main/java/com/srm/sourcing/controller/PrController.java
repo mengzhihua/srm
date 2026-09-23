@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.srm.common.R;
 import com.srm.purchase.entity.PoLine;
 import com.srm.purchase.entity.PurchaseOrder;
+import com.srm.sourcing.entity.MailApproval;
 import com.srm.sourcing.entity.Rfq;
 import com.srm.sourcing.entity.PurchaseRequisition;
+import com.srm.sourcing.service.MailApprovalService;
 import com.srm.sourcing.service.PrService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PrController {
     private final PrService service;
+    private final MailApprovalService mailApprovalService;
 
     @GetMapping("/page")
     public R<Page<PurchaseRequisition>> page(@RequestParam(defaultValue = "1") long current,
@@ -71,5 +74,15 @@ public class PrController {
     @PostMapping("/{id}/to-po")
     public R<PurchaseOrder> toPo(@PathVariable Long id, @RequestBody ToPoReq req) {
         return R.ok(service.toPo(id, req.getSupplierCode(), req.getLines()));
+    }
+
+    @PostMapping("/{id}/mail")
+    public R<MailApproval> mail(@PathVariable Long id, @RequestBody MailRequest req) {
+        return R.ok(mailApprovalService.record(id, req == null ? null : req.getEmail()));
+    }
+
+    @Data
+    public static class MailRequest {
+        private String email;
     }
 }
