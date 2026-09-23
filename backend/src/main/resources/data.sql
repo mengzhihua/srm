@@ -37,6 +37,26 @@ INSERT INTO srm_price_list (supplier_code, material_code, price, currency, min_q
 SELECT 'SUP01', 'SKU003', 2.50, 'CNY', 100, '2025-01-01', '2026-12-31', 'CTR-2025-001', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 WHERE NOT EXISTS (SELECT 1 FROM srm_price_list WHERE supplier_code='SUP01' AND material_code='SKU003');
 
+INSERT INTO srm_discount_band (price_list_id, min_qty, rate, created_at, updated_at)
+SELECT p.id, 10, 0.9500, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP FROM srm_price_list p
+WHERE p.supplier_code='SUP01' AND p.material_code='SKU001'
+AND NOT EXISTS (SELECT 1 FROM srm_discount_band b WHERE b.price_list_id=p.id AND b.min_qty=10);
+INSERT INTO srm_discount_band (price_list_id, min_qty, rate, created_at, updated_at)
+SELECT p.id, 100, 0.9000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP FROM srm_price_list p
+WHERE p.supplier_code='SUP01' AND p.material_code='SKU001'
+AND NOT EXISTS (SELECT 1 FROM srm_discount_band b WHERE b.price_list_id=p.id AND b.min_qty=100);
+INSERT INTO srm_discount_band (price_list_id, min_qty, rate, created_at, updated_at)
+SELECT p.id, 100, 0.9000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP FROM srm_price_list p
+WHERE p.supplier_code='SUP01' AND p.material_code='SKU003'
+AND NOT EXISTS (SELECT 1 FROM srm_discount_band b WHERE b.price_list_id=p.id AND b.min_qty=100);
+
+INSERT INTO srm_plant_pool (plant_code, material_code, status, created_at, updated_at)
+SELECT 'P001', 'SKU001', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM srm_plant_pool WHERE plant_code='P001' AND material_code='SKU001');
+INSERT INTO srm_plant_pool (plant_code, material_code, status, created_at, updated_at)
+SELECT 'P001', 'SKU003', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM srm_plant_pool WHERE plant_code='P001' AND material_code='SKU003');
+
 -- IR 控制塔：待提交采购申请、可催单采购订单、已延误 ASN
 INSERT INTO srm_purchase_requisition (code, plant_code, requester, department, status, remark, created_at, updated_at)
 SELECT 'PR-IR-DRAFT', 'P001', 'IR', 'CONTROL_TOWER', 'DRAFT', 'IR 卡单采购申请', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP

@@ -11,22 +11,36 @@ public final class AgreementPrice {
     private AgreementPrice() {}
 
     public static BigDecimal pick(List<PriceList> lists, String supplier, String material, BigDecimal qty, LocalDate day) {
-        if (lists == null || blank(supplier) || blank(material) || qty == null || day == null) {
+        PriceList best = choose(lists, supplier, material, qty, day);
+        return best == null ? null : best.getPrice();
+    }
+
+    public static PriceList choose(List<PriceList> lists, String supplier, String material, BigDecimal qty, LocalDate day) {
+        return select(lists, supplier, material, qty, day, true);
+    }
+
+    /** 当天仍有效的协议，不看起订量。用来列出这份协议上的折扣档。 */
+    public static PriceList contract(List<PriceList> lists, String supplier, String material, LocalDate day) {
+        return select(lists, supplier, material, null, day, false);
+    }
+
+    private static PriceList select(List<PriceList> lists, String supplier, String material, BigDecimal qty, LocalDate day, boolean checkMin) {
+        if (lists == null || blank(supplier) || blank(material) || day == null || (checkMin && qty == null)) {
             return null;
         }
         PriceList best = null;
         for (PriceList row : lists) {
-            if (!usable(row, supplier, material, qty, day)) {
+            if (!usable(row, supplier, material, qty, day, checkMin)) {
                 continue;
             }
             if (best == null || newer(row, best)) {
                 best = row;
             }
         }
-        return best == null ? null : best.getPrice();
+        return best;
     }
 
-    private static boolean usable(PriceList row, String supplier, String material, BigDecimal qty, LocalDate day) {
+    private static boolean usable(PriceList row, String supplier, String material, BigDecimal qty, LocalDate day, boolean checkMin) {
         if (row.getStatus() != null && row.getStatus() != 1) {
             return false;
         }
@@ -41,6 +55,9 @@ public final class AgreementPrice {
         }
         if (row.getValidTo() != null && day.isAfter(row.getValidTo())) {
             return false;
+        }
+        if (!checkMin) {
+            return true;
         }
         return row.getMinQty() == null || qty.compareTo(row.getMinQty()) >= 0;
     }

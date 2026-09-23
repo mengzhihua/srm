@@ -4,9 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.srm.basic.entity.DiscountBand;
 import com.srm.basic.entity.PriceList;
+import com.srm.basic.mapper.DiscountBandMapper;
 import com.srm.basic.mapper.PriceListMapper;
 import com.srm.basic.service.AgreementPrice;
+import com.srm.basic.service.ShelfPrice;
 import com.srm.common.BizException;
 import com.srm.common.CodeGenerator;
 import com.srm.integration.client.SapClient;
@@ -23,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -33,6 +37,7 @@ public class PurchaseOrderService {
     private final PurchaseOrderMapper poMapper;
     private final PoLineMapper lineMapper;
     private final PriceListMapper priceListMapper;
+    private final DiscountBandMapper discountBandMapper;
     private final SapClient sapClient;
     private final IntegrationLogService logService;
     private final CodeGenerator codeGenerator;
@@ -204,16 +209,31 @@ public class PurchaseOrderService {
 
     private void applyAgreement(PurchaseOrder po) {
         List<PriceList> lists = priceListMapper.selectList(null);
+        List<DiscountBand> bands = discountBandMapper.selectList(null);
         LocalDate today = LocalDate.now();
         for (PoLine line : po.getLines()) {
             if (line.getPrice() != null && line.getPrice().signum() > 0) {
                 continue;
             }
-            BigDecimal agreed = AgreementPrice.pick(lists, po.getSupplierCode(), line.getMaterialCode(), line.getQty(), today);
-            if (agreed != null) {
-                line.setPrice(agreed);
+            PriceList chosen = AgreementPrice.choose(lists, po.getSupplierCode(), line.getMaterialCode(), line.getQty(), today);
+            if (chosen == null) {
+                continue;
+            }
+            line.setPrice(ShelfPrice.afterBands(chosen.getPrice(), line.getQty(), ratesFor(bands, chosen.getId())));
+        }
+    }
+
+    private static List<ShelfPrice.Band> ratesFor(List<DiscountBand> bands, Long priceListId) {
+        List<ShelfPrice.Band> rates = new ArrayList<ShelfPrice.Band>();
+        if (priceListId == null || bands == null) {
+            return rates;
+        }
+        for (DiscountBand band : bands) {
+            if (priceListId.equals(band.getPriceListId()) && band.getMinQty() != null && band.getRate() != null) {
+                rates.add(new ShelfPrice.Band(band.getMinQty(), band.getRate()));
             }
         }
+        return rates;
     }
 
     private void fillAmounts(PurchaseOrder po) {

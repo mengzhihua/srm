@@ -428,7 +428,35 @@ CREATE TABLE IF NOT EXISTS srm_coupon (
   code VARCHAR(64) NOT NULL,
   percent DECIMAL(8,2) NOT NULL,
   status INT DEFAULT 1,
+  valid_from DATE,
+  valid_to DATE,
+  max_uses INT,
+  used_count INT DEFAULT 0,
   created_at TIMESTAMP,
   updated_at TIMESTAMP,
   CONSTRAINT uk_srm_coupon_owner UNIQUE (owner_name, code)
+);
+ALTER TABLE srm_coupon ADD COLUMN IF NOT EXISTS valid_from DATE;
+ALTER TABLE srm_coupon ADD COLUMN IF NOT EXISTS valid_to DATE;
+ALTER TABLE srm_coupon ADD COLUMN IF NOT EXISTS max_uses INT;
+ALTER TABLE srm_coupon ADD COLUMN IF NOT EXISTS used_count INT DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS srm_discount_band (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  price_list_id BIGINT NOT NULL,
+  min_qty DECIMAL(18,3) NOT NULL,
+  rate DECIMAL(8,4) NOT NULL,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP,
+  CONSTRAINT uk_srm_discount_band UNIQUE (price_list_id, min_qty)
+);
+
+CREATE TABLE IF NOT EXISTS srm_plant_pool (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  plant_code VARCHAR(32) NOT NULL,
+  material_code VARCHAR(64) NOT NULL,
+  status INT DEFAULT 1,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP,
+  CONSTRAINT uk_srm_plant_pool UNIQUE (plant_code, material_code)
 );

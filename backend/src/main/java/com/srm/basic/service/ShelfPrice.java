@@ -2,25 +2,56 @@ package com.srm.basic.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 
-/** 选品价。数量折扣打在协议价上：满 10 件九五折，满 100 件九折。没有协议价就不编造牌价。 */
+/** 选品价。折扣取协议上达到的数量档，没有档就用协议价。没有协议价就不编造牌价。 */
 public final class ShelfPrice {
-    private static final BigDecimal TEN = new BigDecimal("10");
     private static final BigDecimal HUNDRED = new BigDecimal("100");
-    private static final BigDecimal RATE_10 = new BigDecimal("0.95");
-    private static final BigDecimal RATE_100 = new BigDecimal("0.90");
 
     private ShelfPrice() {}
 
-    public static BigDecimal afterQty(BigDecimal agreement, BigDecimal qty) {
+    public static final class Band {
+        private final BigDecimal minQty;
+        private final BigDecimal rate;
+
+        public Band(BigDecimal minQty, BigDecimal rate) {
+            this.minQty = minQty;
+            this.rate = rate;
+        }
+
+        public BigDecimal getMinQty() {
+            return minQty;
+        }
+
+        public BigDecimal getRate() {
+            return rate;
+        }
+    }
+
+    public static BigDecimal afterBands(BigDecimal agreement, BigDecimal qty, List<Band> bands) {
         if (agreement == null) {
             return null;
         }
         BigDecimal rate = BigDecimal.ONE;
-        if (qty != null && qty.compareTo(HUNDRED) >= 0) {
-            rate = RATE_100;
-        } else if (qty != null && qty.compareTo(TEN) >= 0) {
-            rate = RATE_10;
+        if (qty != null && bands != null) {
+            Band best = null;
+            for (Band band : bands) {
+                if (band == null || band.minQty == null || band.rate == null) {
+                    continue;
+                }
+                if (band.rate.signum() <= 0 || band.rate.compareTo(BigDecimal.ONE) > 0) {
+                    continue;
+                }
+                if (qty.compareTo(band.minQty) < 0) {
+                    continue;
+                }
+                if (best == null || band.minQty.compareTo(best.minQty) > 0) {
+                    best = band;
+                }
+            }
+            if (best != null) {
+                rate = best.rate;
+            }
         }
         return agreement.multiply(rate).setScale(4, RoundingMode.HALF_UP);
     }
