@@ -175,5 +175,14 @@ public class OpenIrControllerTest {
                         .content("{\"poCode\":\"PO-IR-EXPEDITE\",\"idempotencyKey\":\"SRM-EXP-1\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0));
+
+        mockMvc.perform(get("/api/open/ir/match-basis")
+                        .header("X-Api-Key", "test-open-key")
+                        .param("poCode", "PO-IR-EXPEDITE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.poCode").value("PO-IR-EXPEDITE"))
+                .andExpect(jsonPath("$.data.poAmount").value(4500))
+                .andExpect(jsonPath("$.data.receivedQty").value(0));
     }
 }

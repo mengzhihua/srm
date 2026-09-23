@@ -12,6 +12,8 @@ import com.srm.purchase.entity.PurchaseOrder;
 import com.srm.purchase.mapper.PoLineMapper;
 import com.srm.purchase.mapper.PurchaseOrderMapper;
 import com.srm.purchase.service.PurchaseOrderService;
+import com.srm.receipt.entity.GoodsReceipt;
+import com.srm.receipt.mapper.GoodsReceiptMapper;
 import com.srm.basic.entity.Supplier;
 import com.srm.basic.mapper.SupplierMapper;
 import com.srm.sourcing.entity.PrLine;
@@ -27,6 +29,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
@@ -51,6 +54,7 @@ public class OpenIrController {
     private final PoLineMapper poLineMapper;
     private final AsnMapper asnMapper;
     private final AsnLineMapper asnLineMapper;
+    private final GoodsReceiptMapper grMapper;
     private final SupplierMapper supplierMapper;
 
     @Value("${srm.integration.api-key:srm-wms-key}")
@@ -124,6 +128,48 @@ public class OpenIrController {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("system", "SRM");
         data.put("snapshots", rows);
+        return R.ok(data);
+    }
+
+    /** 给进项三单匹配用：订单金额、已收数量、最近一张收货单。没有收货单时用订单行已收数量。 */
+    @GetMapping("/match-basis")
+    public R<Map<String, Object>> matchBasis(
+            @RequestHeader(value = "X-Api-Key", required = false) String key,
+            @RequestParam String poCode) {
+        checkKey(key);
+        if (blank(poCode)) {
+            throw new BizException("采购订单号不能为空");
+        }
+        String code = poCode.trim();
+        PurchaseOrder po = poMapper.selectOne(new LambdaQueryWrapper<PurchaseOrder>()
+                .eq(PurchaseOrder::getCode, code));
+        if (po == null) {
+            throw new BizException("采购订单不存在: " + code);
+        }
+        List<GoodsReceipt> receipts = grMapper.selectList(new LambdaQueryWrapper<GoodsReceipt>()
+                .eq(GoodsReceipt::getPoCode, code)
+                .orderByDesc(GoodsReceipt::getId));
+        BigDecimal received = BigDecimal.ZERO;
+        String grCode = null;
+        boolean fromReceipt = false;
+        for (GoodsReceipt receipt : receipts) {
+            if (grCode == null) {
+                grCode = receipt.getCode();
+            }
+            if (receipt.getTotalReceivedQty() != null) {
+                received = received.add(receipt.getTotalReceivedQty());
+                fromReceipt = true;
+            }
+        }
+        if (!fromReceipt) {
+            PoLine line = firstPoLine(po.getId());
+            received = line == null || line.getReceivedQty() == null ? BigDecimal.ZERO : line.getReceivedQty();
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("poCode", po.getCode());
+        data.put("poAmount", po.getTotalAmount());
+        data.put("receivedQty", received);
+        data.put("grCode", grCode);
         return R.ok(data);
     }
 
