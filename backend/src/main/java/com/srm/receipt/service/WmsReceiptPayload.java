@@ -14,7 +14,14 @@ public class WmsReceiptPayload {
     /** SRM ASN 单号（WMS externalNo） */
     private String externalNo;
     private LocalDateTime receivedAt;
+    /** true 时行数量是累计收货，不是本次增量。缺省仍按增量，兼容原来的回调。 */
+    private Boolean cumulative;
     private List<Line> lines;
+
+    /** 累计回传覆盖行数量；缺省按增量累加。 */
+    public boolean delta() {
+        return !Boolean.TRUE.equals(cumulative);
+    }
 
     @Data
     public static class Line {
