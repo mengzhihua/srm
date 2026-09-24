@@ -18,4 +18,6 @@ public class DemandItem extends BaseEntity {
     private BigDecimal qty;
     private String status;
     private Long prId;
+    private String couponCode;
+    private java.math.BigDecimal couponPercent;
 }

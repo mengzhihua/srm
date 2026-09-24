@@ -98,10 +98,12 @@ CREATE TABLE IF NOT EXISTS srm_pr_line (
   required_date DATE,
   ordered_qty DECIMAL(18,3) DEFAULT 0,
   remark VARCHAR(255),
+  coupon_percent DECIMAL(8,2),
   created_at TIMESTAMP,
   updated_at TIMESTAMP
 );
 CREATE INDEX idx_pr_line ON srm_pr_line (pr_id);
+ALTER TABLE srm_pr_line ADD COLUMN IF NOT EXISTS coupon_percent DECIMAL(8,2);
 
 CREATE TABLE IF NOT EXISTS srm_rfq (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -189,10 +191,12 @@ CREATE TABLE IF NOT EXISTS srm_po_line (
   rejected_qty DECIMAL(18,3) DEFAULT 0,
   invoiced_qty DECIMAL(18,3) DEFAULT 0,
   sap_item_no VARCHAR(16),
+  coupon_percent DECIMAL(8,2),
   created_at TIMESTAMP,
   updated_at TIMESTAMP
 );
 CREATE INDEX idx_po_line ON srm_po_line (po_id);
+ALTER TABLE srm_po_line ADD COLUMN IF NOT EXISTS coupon_percent DECIMAL(8,2);
 
 -- ===================== 发货通知 ASN =====================
 CREATE TABLE IF NOT EXISTS srm_asn (
@@ -407,6 +411,21 @@ CREATE TABLE IF NOT EXISTS srm_demand_item (
   qty DECIMAL(18,3) NOT NULL,
   status VARCHAR(16) NOT NULL,
   pr_id BIGINT,
+  coupon_code VARCHAR(64),
+  coupon_percent DECIMAL(8,2),
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+);
+ALTER TABLE srm_demand_item ADD COLUMN IF NOT EXISTS coupon_code VARCHAR(64);
+ALTER TABLE srm_demand_item ADD COLUMN IF NOT EXISTS coupon_percent DECIMAL(8,2);
+
+CREATE TABLE IF NOT EXISTS srm_mail_approval (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  pr_id BIGINT NOT NULL,
+  pr_code VARCHAR(32),
+  email VARCHAR(128) NOT NULL,
+  status VARCHAR(16) NOT NULL,
+  detail VARCHAR(255),
   created_at TIMESTAMP,
   updated_at TIMESTAMP
 );
@@ -428,7 +447,35 @@ CREATE TABLE IF NOT EXISTS srm_coupon (
   code VARCHAR(64) NOT NULL,
   percent DECIMAL(8,2) NOT NULL,
   status INT DEFAULT 1,
+  valid_from DATE,
+  valid_to DATE,
+  max_uses INT,
+  used_count INT DEFAULT 0,
   created_at TIMESTAMP,
   updated_at TIMESTAMP,
   CONSTRAINT uk_srm_coupon_owner UNIQUE (owner_name, code)
+);
+ALTER TABLE srm_coupon ADD COLUMN IF NOT EXISTS valid_from DATE;
+ALTER TABLE srm_coupon ADD COLUMN IF NOT EXISTS valid_to DATE;
+ALTER TABLE srm_coupon ADD COLUMN IF NOT EXISTS max_uses INT;
+ALTER TABLE srm_coupon ADD COLUMN IF NOT EXISTS used_count INT DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS srm_discount_band (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  price_list_id BIGINT NOT NULL,
+  min_qty DECIMAL(18,3) NOT NULL,
+  rate DECIMAL(8,4) NOT NULL,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP,
+  CONSTRAINT uk_srm_discount_band UNIQUE (price_list_id, min_qty)
+);
+
+CREATE TABLE IF NOT EXISTS srm_plant_pool (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  plant_code VARCHAR(32) NOT NULL,
+  material_code VARCHAR(64) NOT NULL,
+  status INT DEFAULT 1,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP,
+  CONSTRAINT uk_srm_plant_pool UNIQUE (plant_code, material_code)
 );

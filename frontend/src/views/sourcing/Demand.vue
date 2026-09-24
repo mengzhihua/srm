@@ -14,6 +14,9 @@
           <template #default="{ row }">{{ row.materialCode || '未匹配' }}</template>
         </el-table-column>
         <el-table-column prop="qty" label="数量" width="100" />
+        <el-table-column label="优惠券" width="120">
+          <template #default="{ row }">{{ row.couponPercent ? `${row.couponCode} ${row.couponPercent}%` : '—' }}</template>
+        </el-table-column>
       </el-table>
     </div>
   </div>

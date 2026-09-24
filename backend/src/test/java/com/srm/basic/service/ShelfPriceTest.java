@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -13,12 +14,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ShelfPriceTest {
     @Test
-    void quantityBandAppliesOnlyWhenAgreementExists() {
-        assertNull(ShelfPrice.afterQty(null, new BigDecimal("100")));
-        assertEquals(0, ShelfPrice.afterQty(new BigDecimal("45"), new BigDecimal("1")).compareTo(new BigDecimal("45.0000")));
-        assertEquals(0, ShelfPrice.afterQty(new BigDecimal("45"), new BigDecimal("10")).compareTo(new BigDecimal("42.7500")));
-        assertEquals(0, ShelfPrice.afterQty(new BigDecimal("45"), new BigDecimal("99")).compareTo(new BigDecimal("42.7500")));
-        assertEquals(0, ShelfPrice.afterQty(new BigDecimal("45"), new BigDecimal("100")).compareTo(new BigDecimal("40.5000")));
+    void bandsComeFromTheContract() {
+        assertNull(ShelfPrice.afterBands(null, new BigDecimal("100"), Collections.<ShelfPrice.Band>emptyList()));
+        assertEquals(0, ShelfPrice.afterBands(new BigDecimal("45"), new BigDecimal("10"), Collections.<ShelfPrice.Band>emptyList())
+                .compareTo(new BigDecimal("45.0000")));
+        java.util.List<ShelfPrice.Band> bands = Arrays.asList(
+                new ShelfPrice.Band(new BigDecimal("10"), new BigDecimal("0.95")),
+                new ShelfPrice.Band(new BigDecimal("100"), new BigDecimal("0.90")));
+        assertEquals(0, ShelfPrice.afterBands(new BigDecimal("45"), new BigDecimal("9"), bands).compareTo(new BigDecimal("45.0000")));
+        assertEquals(0, ShelfPrice.afterBands(new BigDecimal("45"), new BigDecimal("10"), bands).compareTo(new BigDecimal("42.7500")));
+        assertEquals(0, ShelfPrice.afterBands(new BigDecimal("45"), new BigDecimal("100"), bands).compareTo(new BigDecimal("40.5000")));
     }
 
     @Test
@@ -32,11 +37,20 @@ class ShelfPriceTest {
         row.setValidTo(LocalDate.of(2026, 12, 31));
         row.setStatus(1);
         LocalDate day = LocalDate.of(2026, 9, 23);
-        assertNull(ShelfPrice.afterQty(AgreementPrice.pick(Collections.singletonList(row), "SUP01", "SKU001", BigDecimal.ONE, day), BigDecimal.ONE));
-        assertEquals(0, ShelfPrice.afterQty(AgreementPrice.pick(Collections.singletonList(row), "SUP01", "SKU001", new BigDecimal("10"), day), new BigDecimal("10"))
+        java.util.List<ShelfPrice.Band> bands = Collections.singletonList(new ShelfPrice.Band(new BigDecimal("10"), new BigDecimal("0.95")));
+        assertNull(ShelfPrice.afterBands(AgreementPrice.pick(Collections.singletonList(row), "SUP01", "SKU001", BigDecimal.ONE, day), BigDecimal.ONE, bands));
+        assertEquals(0, ShelfPrice.afterBands(AgreementPrice.pick(Collections.singletonList(row), "SUP01", "SKU001", new BigDecimal("10"), day), new BigDecimal("10"), bands)
                 .compareTo(new BigDecimal("42.7500")));
-        assertEquals(0, ShelfPrice.afterQty(AgreementPrice.pick(Collections.singletonList(row), "SUP01", "SKU001", new BigDecimal("100"), day), new BigDecimal("100"))
-                .compareTo(new BigDecimal("40.5000")));
+    }
+
+    @Test
+    void orderKeepsTypedPriceAndAppliesCouponOnlyToEmptyPrice() {
+        java.util.List<ShelfPrice.Band> bands = Collections.singletonList(new ShelfPrice.Band(new BigDecimal("10"), new BigDecimal("0.95")));
+        assertEquals(0, ShelfPrice.forOrder(new BigDecimal("50"), new BigDecimal("45"), new BigDecimal("10"), bands, new BigDecimal("10"))
+                .compareTo(new BigDecimal("50")));
+        assertEquals(0, ShelfPrice.forOrder(null, new BigDecimal("45"), new BigDecimal("10"), bands, new BigDecimal("10"))
+                .compareTo(new BigDecimal("38.4750")));
+        assertNull(ShelfPrice.forOrder(null, null, new BigDecimal("10"), bands, new BigDecimal("10")));
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.srm.sourcing.controller;
 
 import com.srm.common.R;
 import com.srm.sourcing.entity.Coupon;
+import com.srm.sourcing.entity.PlantPool;
 import com.srm.sourcing.entity.ShelfMark;
 import com.srm.sourcing.service.ShelfService;
 import lombok.Data;
@@ -20,8 +21,25 @@ public class ShelfController {
 
     @GetMapping
     public R<Map<String, Object>> shelf(@RequestParam(required = false) String supplierCode,
-                                         @RequestParam(required = false) String coupon) {
-        return R.ok(shelfService.shelf(supplierCode, coupon));
+                                         @RequestParam(required = false) String coupon,
+                                         @RequestParam(required = false) String plantCode) {
+        return R.ok(shelfService.shelf(supplierCode, coupon, plantCode));
+    }
+
+    @GetMapping("/pool")
+    public R<List<PlantPool>> pool(@RequestParam(required = false) String plantCode) {
+        return R.ok(shelfService.pool(plantCode));
+    }
+
+    @PostMapping("/pool")
+    public R<PlantPool> addPool(@RequestBody PoolRequest req) {
+        return R.ok(shelfService.addPool(req == null ? null : req.getPlantCode(), req == null ? null : req.getMaterialCode()));
+    }
+
+    @DeleteMapping("/pool")
+    public R<Void> removePool(@RequestParam String plantCode, @RequestParam String materialCode) {
+        shelfService.removePool(plantCode, materialCode);
+        return R.ok();
     }
 
     @GetMapping("/marks")
@@ -52,7 +70,15 @@ public class ShelfController {
 
     @PostMapping("/coupon")
     public R<Coupon> saveCoupon(@RequestBody CouponRequest req) {
-        return R.ok(shelfService.saveCoupon(req == null ? null : req.getCode(), req == null ? null : req.getPercent()));
+        if (req == null) {
+            return R.ok(shelfService.saveCoupon(null, null, null, null, null));
+        }
+        return R.ok(shelfService.saveCoupon(req.getCode(), req.getPercent(), req.getValidFrom(), req.getValidTo(), req.getMaxUses()));
+    }
+
+    @PostMapping("/coupon/use")
+    public R<Coupon> useCoupon(@RequestBody CouponRequest req) {
+        return R.ok(shelfService.useCoupon(req == null ? null : req.getCode()));
     }
 
     @Data
@@ -64,5 +90,14 @@ public class ShelfController {
     public static class CouponRequest {
         private String code;
         private BigDecimal percent;
+        private String validFrom;
+        private String validTo;
+        private Integer maxUses;
+    }
+
+    @Data
+    public static class PoolRequest {
+        private String plantCode;
+        private String materialCode;
     }
 }

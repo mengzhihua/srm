@@ -28,4 +28,5 @@ public class PoLine extends BaseEntity {
     private BigDecimal rejectedQty;
     private BigDecimal invoicedQty;
     private String sapItemNo;
+    private BigDecimal couponPercent;
 }
