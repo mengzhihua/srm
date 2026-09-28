@@ -81,6 +81,7 @@ public class InvoiceService {
         inv.setId(null);
         inv.setCode(codeGenerator.next("INV"));
         inv.setStatus("SUBMITTED");
+        inv.setRemark(clip(inv.getRemark()));
         BigDecimal amount = BigDecimal.ZERO;
         int i = 0;
         for (InvoiceLine l : inv.getLines()) {
