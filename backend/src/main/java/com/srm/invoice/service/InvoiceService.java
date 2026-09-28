@@ -164,7 +164,6 @@ public class InvoiceService {
             pl.setInvoicedQty(nz(pl.getInvoicedQty()).add(l.getQty()));
             poLineMapper.updateById(pl);
         }
-        // updateById 默认忽略 null 字段，remark 清不掉，用 UpdateWrapper 显式置空
         inv.setStatus("MATCHED");
         inv.setRemark(null);
         invoiceMapper.update(null, new LambdaUpdateWrapper<Invoice>()
