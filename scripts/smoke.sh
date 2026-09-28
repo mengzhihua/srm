@@ -107,7 +107,7 @@ PL1=$(echo "$GRD" | jq '.lines[0].poLineId'); PL2=$(echo "$GRD" | jq '.lines[1].
 INV=$(call POST /invoice "{\"poCode\":\"$PO_CODE\",\"invoiceNo\":\"INV2026-001\",\"invoiceDate\":\"2026-09-08\",
   \"taxAmount\":585.25,
   \"lines\":[{\"grLineId\":$GL1,\"poLineId\":$PL1,\"materialCode\":\"SKU001\",\"qty\":100,\"price\":45},
-            {\"grLineId\":$GL2,\"poLineId\":$PL2,\"materialCode\":\"SKU003\",\"qty\":45,\"price\":2.5}]}")
+            {\"grLineId\":$GL2,\"poLineId\":$PL2,\"materialCode\":\"SKU003\",\"qty\":40,\"price\":2.5}]}")
 INV_ID=$(echo "$INV" | jq .id); echo "invoice=$(echo "$INV" | jq -r .code) status=$(echo "$INV" | jq -r .status)"
 [ "$(echo "$INV" | jq -r .status)" = "MATCHED" ] || fail "auto-match: $INV"
 # 同一 PO 再提交一张，可开票量已为 0，应直接 MISMATCH 且原因落库
@@ -122,6 +122,19 @@ INV3=$(call POST /invoice "{\"poCode\":\"$PO_CODE\",\"invoiceNo\":\"INV2026-003\
 [ "$(echo "$INV3" | jq -r .status)" = "MISMATCH" ] || fail "zero-qty path: $INV3"
 echo "$INV3" | jq -r .remark | grep -q '开票数量必须大于 0' || fail "zero-qty remark: $(echo "$INV3" | jq -r .remark)"
 echo "zero-qty invoice=$(echo "$INV3" | jq -r .code) remark=$(echo "$INV3" | jq -r .remark)"
+# 同一订单行两条明细各自<=可开票量但合计超出（SKU003 收50拒5已开票40，可开票 5）：3+3>5
+INV4=$(call POST /invoice "{\"poCode\":\"$PO_CODE\",\"invoiceNo\":\"INV2026-004\",\"invoiceDate\":\"2026-09-08\",
+  \"lines\":[{\"grLineId\":$GL2,\"poLineId\":$PL2,\"materialCode\":\"SKU003\",\"qty\":3,\"price\":2.5},
+            {\"grLineId\":$GL2,\"poLineId\":$PL2,\"materialCode\":\"SKU003\",\"qty\":3,\"price\":2.5}]}")
+[ "$(echo "$INV4" | jq -r .status)" = "MISMATCH" ] || fail "aggregate-qty path: $INV4"
+echo "$INV4" | jq -r .remark | grep -q '超过可开票数量' || fail "aggregate remark: $(echo "$INV4" | jq -r .remark)"
+echo "aggregate invoice=$(echo "$INV4" | jq -r .code) remark=$(echo "$INV4" | jq -r .remark)"
+# 单价为 0 判 MISMATCH
+INV5=$(call POST /invoice "{\"poCode\":\"$PO_CODE\",\"invoiceNo\":\"INV2026-005\",\"invoiceDate\":\"2026-09-08\",
+  \"lines\":[{\"grLineId\":$GL2,\"poLineId\":$PL2,\"materialCode\":\"SKU003\",\"qty\":1,\"price\":0}]}")
+[ "$(echo "$INV5" | jq -r .status)" = "MISMATCH" ] || fail "zero-price path: $INV5"
+echo "$INV5" | jq -r .remark | grep -q '单价必须大于 0' || fail "zero-price remark: $(echo "$INV5" | jq -r .remark)"
+echo "zero-price invoice=$(echo "$INV5" | jq -r .code) remark=$(echo "$INV5" | jq -r .remark)"
 TOKEN=$(call POST /auth/login '{"username":"buyer","password":"buyer123"}' | jq -r .token)
 call POST "/invoice/$INV_ID/approve" >/dev/null
 INV=$(call POST "/invoice/$INV_ID/post-to-sap")

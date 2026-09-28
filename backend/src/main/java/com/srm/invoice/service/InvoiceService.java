@@ -128,6 +128,13 @@ public class InvoiceService {
         Map<Long, PoLine> poLines = poLineMapper.selectList(new LambdaQueryWrapper<PoLine>()
                         .eq(PoLine::getPoId, po.getId())).stream()
                 .collect(Collectors.toMap(PoLine::getId, l -> l));
+        // 同一订单行多条开票明细按合计数量与可开票量比较
+        Map<Long, BigDecimal> requested = new java.util.HashMap<>();
+        for (InvoiceLine l : inv.getLines()) {
+            if (l.getQty() != null && l.getQty().signum() > 0 && l.getPoLineId() != null) {
+                requested.merge(l.getPoLineId(), l.getQty(), BigDecimal::add);
+            }
+        }
         StringBuilder err = new StringBuilder();
         for (InvoiceLine l : inv.getLines()) {
             PoLine pl = poLines.get(l.getPoLineId());
@@ -141,12 +148,15 @@ public class InvoiceService {
             }
             BigDecimal available = nz(pl.getReceivedQty()).subtract(nz(pl.getRejectedQty()))
                     .subtract(nz(pl.getInvoicedQty()));
-            if (l.getQty().compareTo(available) > 0) {
-                err.append(pl.getMaterialCode()).append(" 开票数量 ").append(l.getQty())
+            BigDecimal reqQty = requested.get(l.getPoLineId());
+            if (reqQty != null && reqQty.compareTo(available) > 0) {
+                err.append(pl.getMaterialCode()).append(" 开票数量 ").append(reqQty)
                         .append(" 超过可开票数量 ").append(available).append("; ");
             }
             if (l.getPrice() == null) {
                 err.append(pl.getMaterialCode()).append(" 缺少单价; ");
+            } else if (l.getPrice().signum() <= 0) {
+                err.append(pl.getMaterialCode()).append(" 单价必须大于 0; ");
             } else if (pl.getPrice() != null
                     && l.getPrice().subtract(pl.getPrice()).abs().compareTo(priceTolerance) > 0) {
                 err.append(pl.getMaterialCode()).append(" 单价 ").append(l.getPrice())
