@@ -98,7 +98,7 @@ SUP=$(call GET "/basic/supplier/list" | jq -c '.[] | select(.code=="SUP01")')
 [ -n "$(echo "$SUP" | jq -r .grade)" ] && [ "$(echo "$SUP" | jq -r .grade)" != "null" ] || fail "supplier.grade not written back"
 echo "supplier grade=$(echo "$SUP" | jq -r .grade) score=$(echo "$SUP" | jq -r .score)"
 
-echo "== 6. 发票: 供应商提交 -> buyer match/approve/post-to-sap"
+echo "== 6. 发票: 供应商提交(自动对账) -> buyer approve/post-to-sap + MISMATCH 复测"
 TOKEN=$SUP_TOKEN
 GRL=$(call GET "/receipt/page" | jq -c '.records[0] | {id}')
 GRD=$(call GET "/receipt/$(echo "$GRL" | jq .id)")
@@ -109,8 +109,14 @@ INV=$(call POST /invoice "{\"poCode\":\"$PO_CODE\",\"invoiceNo\":\"INV2026-001\"
   \"lines\":[{\"grLineId\":$GL1,\"poLineId\":$PL1,\"materialCode\":\"SKU001\",\"qty\":100,\"price\":45},
             {\"grLineId\":$GL2,\"poLineId\":$PL2,\"materialCode\":\"SKU003\",\"qty\":45,\"price\":2.5}]}")
 INV_ID=$(echo "$INV" | jq .id); echo "invoice=$(echo "$INV" | jq -r .code) status=$(echo "$INV" | jq -r .status)"
+[ "$(echo "$INV" | jq -r .status)" = "MATCHED" ] || fail "auto-match: $INV"
+# 同一 PO 再提交一张，可开票量已为 0，应直接 MISMATCH 且原因落库
+INV2=$(call POST /invoice "{\"poCode\":\"$PO_CODE\",\"invoiceNo\":\"INV2026-002\",\"invoiceDate\":\"2026-09-08\",
+  \"lines\":[{\"grLineId\":$GL1,\"poLineId\":$PL1,\"materialCode\":\"SKU001\",\"qty\":1,\"price\":45}]}")
+[ "$(echo "$INV2" | jq -r .status)" = "MISMATCH" ] || fail "mismatch path: $INV2"
+echo "$INV2" | jq -r .remark | grep -q '超过可开票数量' || fail "mismatch remark: $(echo "$INV2" | jq -r .remark)"
+echo "mismatch invoice=$(echo "$INV2" | jq -r .code) remark=$(echo "$INV2" | jq -r .remark)"
 TOKEN=$(call POST /auth/login '{"username":"buyer","password":"buyer123"}' | jq -r .token)
-INV=$(call POST "/invoice/$INV_ID/match"); [ "$(echo "$INV" | jq -r .status)" = "MATCHED" ] || fail "match: $INV"
 call POST "/invoice/$INV_ID/approve" >/dev/null
 INV=$(call POST "/invoice/$INV_ID/post-to-sap")
 [ "$(echo "$INV" | jq -r .status)" = "POSTED" ] || fail "post-to-sap: $INV"

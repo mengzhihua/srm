@@ -56,7 +56,7 @@ flowchart LR
         PO 收货数量回写 → 供应商考核记录（准时/数量/质量）→ 月度汇总评级回写供应商
                               │
                               ▼
-供应商提交发票 → match（与 PO/GR 三单匹配）→ approve → postToSap（发票凭证 51xxxxxxxx）
+供应商提交发票 → 自动 match（与 PO/GR 三单匹配，MATCHED / MISMATCH）→ 采购员 approve → postToSap（发票凭证 51xxxxxxxx）
 ```
 
 ## 核心单据状态机
@@ -70,7 +70,7 @@ flowchart LR
 | PO 采购订单 | `DRAFT → APPROVED → SENT（sendToSap）→ CONFIRMED（供应商确认）→ PARTIALLY_RECEIVED → RECEIVED → CLOSED`（`CANCELLED`） |
 | ASN 发货通知 | `CREATED → SYNCED（同步 WMS 成功）/ SYNC_FAILED（失败可 retry-sync）→ RECEIVING（部分收货）→ RECEIVED → POSTED（GR 已过账）`（`CANCELLED`） |
 | GR 收货单 | `PENDING → POSTED（SAP 物料凭证过账）/ POST_FAILED（可 retry-post）` |
-| Invoice 发票 | `SUBMITTED → MATCHED / MISMATCH → APPROVED → POSTED`（`REJECTED`） |
+| Invoice 发票 | `SUBMITTED（提交即自动对账）→ MATCHED / MISMATCH（可重新对账）→ APPROVED → POSTED`（`REJECTED`） |
 
 WMS 侧入库单完成态：`RECEIVED / PUTAWAY / CLOSED`（`RECEIVING` 需 `close-receiving`）。
 轮询模式只信 WMS 完成状态——`done = complete || (delta && allReceived)`，部分收货只同步数量、不建 GR。
@@ -85,7 +85,7 @@ WMS 侧入库单完成态：`RECEIVED / PUTAWAY / CLOSED`（`RECEIVING` 需 `clo
 | 发货协同 | 供应商 ASN（行含批次 / 效期，自动或手工同步 WMS，失败 SYNC_FAILED 可重试 / 取消 / 拉取 WMS / 手工回传收货） |
 | 收货记账 | 收货单 GR（按行收货 / 拒收 / 合格数 / 金额，SAP 物料凭证过账，POST_FAILED 可重试，幂等防重） |
 | 供应商考核 | 每张 GR 一条考核明细（准时率、数量准确率、质量率、提前天数、WMS 评分），按供应商 + 月份汇总评级 A/B/C/D 并回写供应商档案，可同步 SAP |
-| 发票对账 | 简版 Ariba 3-way match：供应商提交发票 → 数量（≤ 收货合格数 − 已开票）与单价（容差可配）匹配 → 审批 → 过账 SAP |
+| 发票对账 | 简版 Ariba 3-way match：供应商提交发票即自动对账，数量（≤ 收货合格数 − 已开票）与单价（容差可配）→ MATCHED / MISMATCH（采购员可重新对账）→ 审批 → 过账 SAP |
 | 集成日志 | SAP / WMS 全部出入向调用留痕（请求 / 响应 / 耗时 / 状态），失败可一键重试 |
 | 工作台 | 待审批、待下发、待确认、在途 ASN、待记账、失败数、本月采购金额、供应商等级分布、最近集成日志 |
 | 系统管理 | 登录 / 修改密码，用户管理（角色 + 供应商绑定），操作日志审计 |

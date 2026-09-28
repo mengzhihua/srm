@@ -125,8 +125,12 @@ async function openDetail(row) {
 }
 
 async function act(row, action) {
-  await invoice[action](row.id)
-  ElMessage.success('操作成功')
+  const inv = await invoice[action](row.id)
+  if (action === 'match' && inv.status === 'MISMATCH') {
+    ElMessage.warning('对账不符: ' + inv.remark)
+  } else {
+    ElMessage.success('操作成功')
+  }
   load()
 }
 
@@ -172,7 +176,13 @@ async function doSubmit() {
       amount: lines.reduce((a, l) => a + l.qty * l.price, 0),
       lines: lines.map((l) => ({ poLineId: l.poLineId, materialCode: l.materialCode, qty: l.qty, price: l.price }))
     })
-    ElMessage.success(`发票 ${inv.code} 已提交`)
+    if (inv.status === 'MATCHED') {
+      ElMessage.success(`发票 ${inv.code} 已提交并自动对账通过`)
+    } else if (inv.status === 'MISMATCH') {
+      ElMessage.warning(`发票 ${inv.code} 已提交，对账不符: ${inv.remark}`)
+    } else {
+      ElMessage.success(`发票 ${inv.code} 已提交`)
+    }
     submitVisible.value = false
     load()
   } finally { saving.value = false }
