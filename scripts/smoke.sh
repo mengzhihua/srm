@@ -116,6 +116,12 @@ INV2=$(call POST /invoice "{\"poCode\":\"$PO_CODE\",\"invoiceNo\":\"INV2026-002\
 [ "$(echo "$INV2" | jq -r .status)" = "MISMATCH" ] || fail "mismatch path: $INV2"
 echo "$INV2" | jq -r .remark | grep -q '超过可开票数量' || fail "mismatch remark: $(echo "$INV2" | jq -r .remark)"
 echo "mismatch invoice=$(echo "$INV2" | jq -r .code) remark=$(echo "$INV2" | jq -r .remark)"
+# 数量为 0 的行也应判 MISMATCH
+INV3=$(call POST /invoice "{\"poCode\":\"$PO_CODE\",\"invoiceNo\":\"INV2026-003\",\"invoiceDate\":\"2026-09-08\",
+  \"lines\":[{\"grLineId\":$GL1,\"poLineId\":$PL1,\"materialCode\":\"SKU001\",\"qty\":0,\"price\":45}]}")
+[ "$(echo "$INV3" | jq -r .status)" = "MISMATCH" ] || fail "zero-qty path: $INV3"
+echo "$INV3" | jq -r .remark | grep -q '开票数量必须大于 0' || fail "zero-qty remark: $(echo "$INV3" | jq -r .remark)"
+echo "zero-qty invoice=$(echo "$INV3" | jq -r .code) remark=$(echo "$INV3" | jq -r .remark)"
 TOKEN=$(call POST /auth/login '{"username":"buyer","password":"buyer123"}' | jq -r .token)
 call POST "/invoice/$INV_ID/approve" >/dev/null
 INV=$(call POST "/invoice/$INV_ID/post-to-sap")

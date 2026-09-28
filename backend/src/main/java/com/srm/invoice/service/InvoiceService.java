@@ -2,6 +2,7 @@ package com.srm.invoice.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.srm.common.BizException;
@@ -118,6 +119,12 @@ public class InvoiceService {
             invoiceMapper.updateById(inv);
             return;
         }
+        if (!inv.getSupplierCode().equals(po.getSupplierCode())) {
+            inv.setStatus("MISMATCH");
+            inv.setRemark("采购订单不属于当前供应商: " + inv.getPoCode());
+            invoiceMapper.updateById(inv);
+            return;
+        }
         Map<Long, PoLine> poLines = poLineMapper.selectList(new LambdaQueryWrapper<PoLine>()
                         .eq(PoLine::getPoId, po.getId())).stream()
                 .collect(Collectors.toMap(PoLine::getId, l -> l));
@@ -128,13 +135,19 @@ public class InvoiceService {
                 err.append("行 ").append(l.getId()).append(" 订单行不存在; ");
                 continue;
             }
+            if (l.getQty() == null || l.getQty().signum() <= 0) {
+                err.append(pl.getMaterialCode()).append(" 开票数量必须大于 0; ");
+                continue;
+            }
             BigDecimal available = nz(pl.getReceivedQty()).subtract(nz(pl.getRejectedQty()))
                     .subtract(nz(pl.getInvoicedQty()));
-            if (l.getQty() == null || l.getQty().compareTo(available) > 0) {
+            if (l.getQty().compareTo(available) > 0) {
                 err.append(pl.getMaterialCode()).append(" 开票数量 ").append(l.getQty())
                         .append(" 超过可开票数量 ").append(available).append("; ");
             }
-            if (l.getPrice() != null && pl.getPrice() != null
+            if (l.getPrice() == null) {
+                err.append(pl.getMaterialCode()).append(" 缺少单价; ");
+            } else if (pl.getPrice() != null
                     && l.getPrice().subtract(pl.getPrice()).abs().compareTo(priceTolerance) > 0) {
                 err.append(pl.getMaterialCode()).append(" 单价 ").append(l.getPrice())
                         .append(" 与订单价 ").append(pl.getPrice()).append(" 超容差; ");
@@ -151,9 +164,13 @@ public class InvoiceService {
             pl.setInvoicedQty(nz(pl.getInvoicedQty()).add(l.getQty()));
             poLineMapper.updateById(pl);
         }
+        // updateById 默认忽略 null 字段，remark 清不掉，用 UpdateWrapper 显式置空
         inv.setStatus("MATCHED");
         inv.setRemark(null);
-        invoiceMapper.updateById(inv);
+        invoiceMapper.update(null, new LambdaUpdateWrapper<Invoice>()
+                .eq(Invoice::getId, inv.getId())
+                .set(Invoice::getStatus, "MATCHED")
+                .set(Invoice::getRemark, null));
     }
 
     @Transactional
