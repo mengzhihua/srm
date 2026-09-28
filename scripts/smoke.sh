@@ -122,12 +122,16 @@ INV3=$(call POST /invoice "{\"poCode\":\"$PO_CODE\",\"invoiceNo\":\"INV2026-003\
 [ "$(echo "$INV3" | jq -r .status)" = "MISMATCH" ] || fail "zero-qty path: $INV3"
 echo "$INV3" | jq -r .remark | grep -q '开票数量必须大于 0' || fail "zero-qty remark: $(echo "$INV3" | jq -r .remark)"
 echo "zero-qty invoice=$(echo "$INV3" | jq -r .code) remark=$(echo "$INV3" | jq -r .remark)"
-# 同一订单行两条明细各自<=可开票量但合计超出（SKU003 收50拒5已开票40，可开票 5）：3+3>5
+# 同一订单行 4 条明细各自<=可开票量但合计超出（SKU003 收50拒5已开票40，可开票 5）：2x4=8>5
+# 相同原因应去重：remark 中「超过可开票数量」只出现 1 次
 INV4=$(call POST /invoice "{\"poCode\":\"$PO_CODE\",\"invoiceNo\":\"INV2026-004\",\"invoiceDate\":\"2026-09-08\",
-  \"lines\":[{\"grLineId\":$GL2,\"poLineId\":$PL2,\"materialCode\":\"SKU003\",\"qty\":3,\"price\":2.5},
-            {\"grLineId\":$GL2,\"poLineId\":$PL2,\"materialCode\":\"SKU003\",\"qty\":3,\"price\":2.5}]}")
+  \"lines\":[{\"grLineId\":$GL2,\"poLineId\":$PL2,\"materialCode\":\"SKU003\",\"qty\":2,\"price\":2.5},
+            {\"grLineId\":$GL2,\"poLineId\":$PL2,\"materialCode\":\"SKU003\",\"qty\":2,\"price\":2.5},
+            {\"grLineId\":$GL2,\"poLineId\":$PL2,\"materialCode\":\"SKU003\",\"qty\":2,\"price\":2.5},
+            {\"grLineId\":$GL2,\"poLineId\":$PL2,\"materialCode\":\"SKU003\",\"qty\":2,\"price\":2.5}]}")
 [ "$(echo "$INV4" | jq -r .status)" = "MISMATCH" ] || fail "aggregate-qty path: $INV4"
-echo "$INV4" | jq -r .remark | grep -q '超过可开票数量' || fail "aggregate remark: $(echo "$INV4" | jq -r .remark)"
+CNT=$(echo "$INV4" | jq -r .remark | grep -o '超过可开票数量' | wc -l)
+[ "$CNT" = "1" ] || fail "remark not deduped ($CNT): $(echo "$INV4" | jq -r .remark)"
 echo "aggregate invoice=$(echo "$INV4" | jq -r .code) remark=$(echo "$INV4" | jq -r .remark)"
 # 单价为 0 判 MISMATCH
 INV5=$(call POST /invoice "{\"poCode\":\"$PO_CODE\",\"invoiceNo\":\"INV2026-005\",\"invoiceDate\":\"2026-09-08\",

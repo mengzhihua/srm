@@ -26,7 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -116,13 +118,13 @@ public class InvoiceService {
                 .eq(PurchaseOrder::getCode, inv.getPoCode()));
         if (po == null) {
             inv.setStatus("MISMATCH");
-            inv.setRemark("采购订单不存在: " + inv.getPoCode());
+            inv.setRemark(clip("采购订单不存在: " + inv.getPoCode()));
             invoiceMapper.updateById(inv);
             return;
         }
         if (!inv.getSupplierCode().equals(po.getSupplierCode())) {
             inv.setStatus("MISMATCH");
-            inv.setRemark("采购订单不属于当前供应商: " + inv.getPoCode());
+            inv.setRemark(clip("采购订单不属于当前供应商: " + inv.getPoCode()));
             invoiceMapper.updateById(inv);
             return;
         }
@@ -136,37 +138,38 @@ public class InvoiceService {
                 requested.merge(l.getPoLineId(), l.getQty(), BigDecimal::add);
             }
         }
-        StringBuilder err = new StringBuilder();
+        // 相同原因去重并截断至 remark VARCHAR(255)，避免超长导致提交整体回滚
+        Set<String> err = new LinkedHashSet<>();
         for (InvoiceLine l : inv.getLines()) {
             PoLine pl = poLines.get(l.getPoLineId());
             if (pl == null) {
-                err.append("行 ").append(l.getId()).append(" 订单行不存在; ");
+                err.add("行 " + l.getId() + " 订单行不存在");
                 continue;
             }
             if (l.getQty() == null || l.getQty().signum() <= 0) {
-                err.append(pl.getMaterialCode()).append(" 开票数量必须大于 0; ");
+                err.add(pl.getMaterialCode() + " 开票数量必须大于 0");
                 continue;
             }
             BigDecimal available = nz(pl.getReceivedQty()).subtract(nz(pl.getRejectedQty()))
                     .subtract(nz(pl.getInvoicedQty()));
             BigDecimal reqQty = requested.get(l.getPoLineId());
             if (reqQty != null && reqQty.compareTo(available) > 0) {
-                err.append(pl.getMaterialCode()).append(" 开票数量 ").append(reqQty)
-                        .append(" 超过可开票数量 ").append(available).append("; ");
+                err.add(pl.getMaterialCode() + " 开票数量 " + reqQty
+                        + " 超过可开票数量 " + available);
             }
             if (l.getPrice() == null) {
-                err.append(pl.getMaterialCode()).append(" 缺少单价; ");
+                err.add(pl.getMaterialCode() + " 缺少单价");
             } else if (l.getPrice().signum() <= 0) {
-                err.append(pl.getMaterialCode()).append(" 单价必须大于 0; ");
+                err.add(pl.getMaterialCode() + " 单价必须大于 0");
             } else if (pl.getPrice() != null
                     && l.getPrice().subtract(pl.getPrice()).abs().compareTo(priceTolerance) > 0) {
-                err.append(pl.getMaterialCode()).append(" 单价 ").append(l.getPrice())
-                        .append(" 与订单价 ").append(pl.getPrice()).append(" 超容差; ");
+                err.add(pl.getMaterialCode() + " 单价 " + l.getPrice()
+                        + " 与订单价 " + pl.getPrice() + " 超容差");
             }
         }
-        if (err.length() > 0) {
+        if (!err.isEmpty()) {
             inv.setStatus("MISMATCH");
-            inv.setRemark(err.toString());
+            inv.setRemark(clip(String.join("; ", err) + "; "));
             invoiceMapper.updateById(inv);
             return;
         }
@@ -200,7 +203,7 @@ public class InvoiceService {
         CurrentUser.requireBuyerSide();
         Invoice inv = load(id);
         inv.setStatus("REJECTED");
-        inv.setRemark(reason);
+        inv.setRemark(clip(reason));
         invoiceMapper.updateById(inv);
         return load(id);
     }
@@ -219,6 +222,11 @@ public class InvoiceService {
         inv.setStatus("POSTED");
         invoiceMapper.updateById(inv);
         return load(id);
+    }
+
+    /** srm_invoice.remark 为 VARCHAR(255)，超长截断避免 update 失败导致事务回滚 */
+    private static String clip(String s) {
+        return s == null || s.length() <= 255 ? s : s.substring(0, 252) + "...";
     }
 
     static BigDecimal nz(BigDecimal v) {
