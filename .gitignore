@@ -4,3 +4,4 @@ node_modules/
 frontend/dist/
 release/
 backend/src/main/resources/static/
+frontend/.vite/
