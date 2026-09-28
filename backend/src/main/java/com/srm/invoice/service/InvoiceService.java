@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -129,7 +130,7 @@ public class InvoiceService {
                         .eq(PoLine::getPoId, po.getId())).stream()
                 .collect(Collectors.toMap(PoLine::getId, l -> l));
         // 同一订单行多条开票明细按合计数量与可开票量比较
-        Map<Long, BigDecimal> requested = new java.util.HashMap<>();
+        Map<Long, BigDecimal> requested = new HashMap<>();
         for (InvoiceLine l : inv.getLines()) {
             if (l.getQty() != null && l.getQty().signum() > 0 && l.getPoLineId() != null) {
                 requested.merge(l.getPoLineId(), l.getQty(), BigDecimal::add);
