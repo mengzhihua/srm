@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/** 发票 3-way match（简版）：SUBMITTED -> MATCHED/MISMATCH -> APPROVED -> POSTED */
+/** 发票 3-way match（简版）：SUBMITTED(提交即自动 3-way match) -> MATCHED/MISMATCH -> APPROVED -> POSTED */
 @Service
 @RequiredArgsConstructor
 public class InvoiceService {
@@ -93,10 +93,11 @@ public class InvoiceService {
             l.setInvoiceId(inv.getId());
             lineMapper.insert(l);
         }
+        doMatch(inv);
         return load(inv.getId());
     }
 
-    /** 对账：数量不超过 PO 行收货合格数-已开票，单价容差内 */
+    /** 对账：数量不超过 PO 行收货合格数-已开票，单价容差内；不符置 MISMATCH 不抛错 */
     @Transactional
     public Invoice match(Long id) {
         CurrentUser.requireBuyerSide();
@@ -104,10 +105,18 @@ public class InvoiceService {
         if (!"SUBMITTED".equals(inv.getStatus()) && !"MISMATCH".equals(inv.getStatus())) {
             throw new BizException("当前状态不可对账: " + inv.getStatus());
         }
+        doMatch(inv);
+        return load(id);
+    }
+
+    private void doMatch(Invoice inv) {
         PurchaseOrder po = poMapper.selectOne(new LambdaQueryWrapper<PurchaseOrder>()
                 .eq(PurchaseOrder::getCode, inv.getPoCode()));
         if (po == null) {
-            throw new BizException("采购订单不存在: " + inv.getPoCode());
+            inv.setStatus("MISMATCH");
+            inv.setRemark("采购订单不存在: " + inv.getPoCode());
+            invoiceMapper.updateById(inv);
+            return;
         }
         Map<Long, PoLine> poLines = poLineMapper.selectList(new LambdaQueryWrapper<PoLine>()
                         .eq(PoLine::getPoId, po.getId())).stream()
@@ -135,7 +144,7 @@ public class InvoiceService {
             inv.setStatus("MISMATCH");
             inv.setRemark(err.toString());
             invoiceMapper.updateById(inv);
-            throw new BizException("发票对账不符: " + err);
+            return;
         }
         for (InvoiceLine l : inv.getLines()) {
             PoLine pl = poLines.get(l.getPoLineId());
@@ -143,8 +152,8 @@ public class InvoiceService {
             poLineMapper.updateById(pl);
         }
         inv.setStatus("MATCHED");
+        inv.setRemark(null);
         invoiceMapper.updateById(inv);
-        return load(id);
     }
 
     @Transactional

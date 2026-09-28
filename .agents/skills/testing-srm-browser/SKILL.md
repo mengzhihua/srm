@@ -18,8 +18,8 @@ description: Run the SRM procurement lifecycle in the Chinese browser UI with mo
 3. Supplier: 我的订单 → 确认订单 → 发货. Enter quantity and 批次. 我的发货 should show 已同步WMS.
 4. Admin: 发货通知(ASN) → 手工收货. Actual receipt defaults to zero; enter the full quantity explicitly. Check ASN 已过账, matching GR 已过账 with SAP material document, and PO 已收货.
 5. 供应商考核 has 月度汇总 and 单票明细 tabs; correlate the new GR and monthly score/grade.
-6. Supplier: 我的发票 → 提交发票. The quantity input caps to available received quantity on blur. Submission creates 已提交, not automatic 对账相符.
-7. Buyer: 发票对账 → 对账 → 审批 → 过账SAP are three separate actions. Verify 已过账 and SAP invoice document.
+6. Supplier: 我的发票 → 提交发票. The quantity input caps to available received quantity on blur. Submission auto-runs the 3-way match: the invoice lands directly on 对账相符 (or 对账不符 with the reason shown in a warning toast).
+7. Buyer: 发票对账 → 审批 → 过账SAP. (对账 only re-runs for 已提交 / 对账不符 rows.) Verify 已过账 and SAP invoice document.
 
 # Adversarial and evidence guidance
 
