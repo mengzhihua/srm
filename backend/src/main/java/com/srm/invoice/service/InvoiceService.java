@@ -138,7 +138,6 @@ public class InvoiceService {
                 requested.merge(l.getPoLineId(), l.getQty(), BigDecimal::add);
             }
         }
-        // 相同原因去重并截断至 remark VARCHAR(255)，避免超长导致提交整体回滚
         Set<String> err = new LinkedHashSet<>();
         for (InvoiceLine l : inv.getLines()) {
             PoLine pl = poLines.get(l.getPoLineId());
